@@ -3,21 +3,37 @@
 #include <string>
 #include <vector>
 #include <boost/asio.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
+#include <boost/enable_shared_from_this.hpp>
 
 using namespace boost::asio;
 
 
-class Client
+class Client : public boost::enable_shared_from_this<Client>
 {
 private:
 	int User_id;
 	std::string Nickname;
 	std::string password;
-	~Client() {}
+
+	typedef boost::shared_ptr<Client> ptr;
 
 public:
 	Client(int Id, std::string Nickname, std::string password) : User_id(Id), Nickname(Nickname), password(password),
 		txt_msg_sock(nullptr), file_msg_sock(nullptr), acc_data_sock(nullptr) {}
+
+	~Client() {}
+
+	//SelfPointer for new clients
+	static ptr new_(int Id, std::string Nickname, std::string password)
+	{
+		ptr new_client = boost::make_shared<Client>(Id, Nickname, password);
+		return new_client; 
+	}
+
+	//SelfPointer
+	ptr self_pointer(){ return shared_from_this(); }
 
 	//user data getters
 	int get_UserId() { return this->User_id; }
