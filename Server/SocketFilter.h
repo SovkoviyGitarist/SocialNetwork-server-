@@ -1,7 +1,8 @@
 #pragma once
-#include "Clients.h"
+#include "Distributor.h"
 #include <boost/bind.hpp>
 #include <boost/noncopyable.hpp>
+#include <boost/regex.hpp>
 
 io_service service;
 
@@ -9,6 +10,7 @@ class SockFilter : public boost::enable_shared_from_this<SockFilter>
 {
 private:
 	ip::tcp::socket buffer_socket;
+	std::vector<std::string> iter_vector;
 	enum {max_size = 1024};
 	char read_buffer[max_size];
 	char write_buffer[max_size];
@@ -32,10 +34,9 @@ public:
 	void do_read();
 	size_t read_complete(const error_code& err, size_t bytes);
 	void on_read(const error_code& err, size_t bytes);
-	
 
+	void distribute();
 	
-
 
 };
 

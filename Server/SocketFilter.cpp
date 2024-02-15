@@ -37,12 +37,30 @@ void SockFilter::do_read()
 
 void SockFilter::on_read(const error_code& err, size_t bytes)
 {
-	/////////////////////
+	service.post(distribute);
 }
 
 size_t SockFilter::read_complete(const error_code& err, size_t bytes)
 {
-	/////////////////////////
+	if (err)
+		return 0;
+	else
+	{
+		std::string msg(read_buffer, read_buffer + bytes);
+		boost::regex reg("\\|");
+		boost::sregex_token_iterator iter(msg.begin(), msg.end(), reg, -1);
+		boost::sregex_token_iterator end;
+		while (iter != end)
+		{
+			iter_vector.push_back(*iter);
+		}
+		return 1;
+	}
+}
+
+void SockFilter::distribute()
+{
+
 }
 
 
