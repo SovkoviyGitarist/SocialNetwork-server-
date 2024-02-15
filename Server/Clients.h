@@ -10,8 +10,6 @@
 
 using namespace boost::asio;
 using namespace boost::system;
-typedef boost::shared_ptr<io_service> io_ptr;
-
 
 
 class Client : public boost::enable_shared_from_this<Client>
@@ -54,7 +52,7 @@ public:
 	std::unique_ptr<ip::tcp::socket> file_msg_sock;
 	std::unique_ptr<ip::tcp::socket> acc_data_sock;
 
-
+	static io_context servise;
 	
-
 };
+

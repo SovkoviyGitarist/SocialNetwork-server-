@@ -23,13 +23,13 @@ private:
 	void on_read(const error_code& err, size_t bytes);
 
 public:
-	SockFilter(io_ptr& servise_ptr);
+	SockFilter();
 	~SockFilter();
 
 	typedef boost::shared_ptr<SockFilter> ptr;
 
 	//SelfPointer for new filter
-	static ptr new_filter(io_ptr& servise_ptr);
+	static ptr new_filter();
 	
 	//Socket getter
 	ip::tcp::socket& socket();
