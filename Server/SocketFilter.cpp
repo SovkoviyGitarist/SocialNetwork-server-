@@ -32,12 +32,7 @@ void SockFilter::start()
 
 void SockFilter::do_read()
 {
-	async_read(buffer_socket, buffer(read_buffer), MEM_FN2(read_complete, _1, _2), MEM_FN2(SockFilter::on_read, _1, _2));
-}
-
-void SockFilter::on_read(const error_code& err, size_t bytes)
-{
-	Client::servise.post(&SockFilter::distribute);
+	async_read(buffer_socket, buffer(read_buffer), MEM_FN2(read_complete, _1, _2), MEM_FN1(distribute, _1));
 }
 
 size_t SockFilter::read_complete(const error_code& err, size_t bytes)
@@ -58,9 +53,17 @@ size_t SockFilter::read_complete(const error_code& err, size_t bytes)
 	}
 }
 
-void SockFilter::distribute()
+void SockFilter::distribute(const error_code& err)
 {
-
+	if (!err)
+	{
+		SockFilter::ptr this_filter = shared_from_this();
+		Distributor::ptr new_distributor = boost::make_shared<Distributor>(this_filter->iter_vector[0], this_filter->iter_vector[1]);
+	}
+	else
+	{
+		return;//write exception in future
+	}
 }
 
 

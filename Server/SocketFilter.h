@@ -12,16 +12,14 @@ private:
 	std::vector<std::string> iter_vector;
 	enum {max_size = 1024};
 	char read_buffer[max_size];
-	char write_buffer[max_size];
 	bool started;
-
-	static void distribute();
 
 	//read functions
 	void do_read();
 	size_t read_complete(const error_code& err, size_t bytes);
-	void on_read(const error_code& err, size_t bytes);
 
+	void distribute(const error_code& err);
+	
 public:
 	SockFilter();
 	~SockFilter();

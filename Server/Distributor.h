@@ -2,18 +2,21 @@
 #include "Clients.h"
 
 
-class Distributor
+class Distributor : public boost::enable_shared_from_this<Distributor>
 {
 private:
-	std::vector<Client> clients_vector;
-	std::vector<Client::ptr> clients_ptr_vector;
+	static std::vector<Client> clients_vector;
+	static std::vector<Client::ptr> clients_ptr_vector;
 	std::string UserId;
 	std::string command;
 
 public:
-	Distributor();
+	Distributor(std::string &UserId, std::string &command);
 	~Distributor();
 
-	static void execute_command(std::string UserId, std::string command);
+	typedef boost::shared_ptr<Distributor> ptr;
+
+
+	static void execute_command();
 
 };
