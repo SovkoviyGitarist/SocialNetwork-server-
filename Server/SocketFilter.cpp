@@ -4,13 +4,13 @@
 #define MEM_FN1(x,y) boost::bind(&SockFilter::x, shared_from_this(), y)
 #define MEM_FN2(x,y,z) boost::bind(&SockFilter::x, shared_from_this(), y, z)
 
-SockFilter::SockFilter() : buffer_socket(service), started(false) {}
+SockFilter::SockFilter(io_ptr& servise_ptr) : buffer_socket(*servise_ptr), started(false) {}
 
 SockFilter::~SockFilter() {}
 
-SockFilter::ptr SockFilter::new_filter()
+SockFilter::ptr SockFilter::new_filter(io_ptr& servise_ptr)
 {
-	SockFilter::ptr new_filter = boost::make_shared<SockFilter>();
+	SockFilter::ptr new_filter = boost::make_shared<SockFilter>(servise_ptr);
 	return new_filter;
 }
 
@@ -37,7 +37,7 @@ void SockFilter::do_read()
 
 void SockFilter::on_read(const error_code& err, size_t bytes)
 {
-	service.post(distribute);
+	servise_ptr->post(&SockFilter::distribute);
 }
 
 size_t SockFilter::read_complete(const error_code& err, size_t bytes)
@@ -62,5 +62,7 @@ void SockFilter::distribute()
 {
 
 }
+
+
 
 

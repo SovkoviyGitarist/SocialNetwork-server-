@@ -4,7 +4,6 @@
 #include <boost/noncopyable.hpp>
 #include <boost/regex.hpp>
 
-io_service service;
 
 class SockFilter : public boost::enable_shared_from_this<SockFilter>
 {
@@ -16,27 +15,26 @@ private:
 	char write_buffer[max_size];
 	bool started;
 
-public:
-	SockFilter();
-	~SockFilter();
-
-	typedef boost::shared_ptr<SockFilter> ptr;
-
-	//SelfPointer for new filter
-	static ptr new_filter();
-	
-	//Socket getter
-	ip::tcp::socket& socket();
-
-	void start();
+	static void distribute();
 
 	//read functions
 	void do_read();
 	size_t read_complete(const error_code& err, size_t bytes);
 	void on_read(const error_code& err, size_t bytes);
 
-	void distribute();
+public:
+	SockFilter(io_ptr& servise_ptr);
+	~SockFilter();
+
+	typedef boost::shared_ptr<SockFilter> ptr;
+
+	//SelfPointer for new filter
+	static ptr new_filter(io_ptr& servise_ptr);
 	
+	//Socket getter
+	ip::tcp::socket& socket();
+
+	void start();
 
 };
 
