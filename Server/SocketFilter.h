@@ -17,8 +17,7 @@ private:
 	//read functions
 	void do_read();
 	size_t read_complete(const error_code& err, size_t bytes);
-
-	void distribute(const error_code& err);
+	void on_read(const error_code& err, size_t bytes);
 	
 public:
 	SockFilter();
