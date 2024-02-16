@@ -1,6 +1,6 @@
 #pragma once
 #include "Clients.h"
-
+#include <pqxx/pqxx>
 
 class Distributor : public boost::enable_shared_from_this<Distributor>
 {
