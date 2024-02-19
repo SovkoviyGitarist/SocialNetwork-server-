@@ -47,7 +47,7 @@ size_t SockFilter::read_complete(const error_code& err, size_t bytes)
 		boost::sregex_token_iterator end;
 		while (iter != end)
 		{
-			iter_vector.push_back(*iter);
+			iter_vector.push_back(*(iter++));
 		}
 		return 1;
 	}
