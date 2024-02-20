@@ -2,7 +2,6 @@
 #include "Distributor.h"
 #include <boost/bind.hpp>
 #include <boost/noncopyable.hpp>
-#include <boost/regex.hpp>
 
 
 class SockFilter : public boost::enable_shared_from_this<SockFilter>
@@ -23,7 +22,11 @@ public:
 	SockFilter();
 	~SockFilter();
 
+	boost::shared_ptr<ip::tcp::socket> sock_ptr = boost::make_shared<ip::tcp::socket>(socket());
+
 	typedef boost::shared_ptr<SockFilter> ptr;
+	//-------------------------------------------
+
 
 	//SelfPointer for new filter
 	static ptr new_filter();

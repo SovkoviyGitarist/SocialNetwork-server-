@@ -58,7 +58,7 @@ void SockFilter::on_read(const error_code& err, size_t bytes)
 	if (!err)
 	{
 		SockFilter::ptr this_filter = shared_from_this();
-		Distributor::ptr new_distributor = boost::make_shared<Distributor>(this_filter->iter_vector[0], this_filter->iter_vector[1]);
+		Distributor::ptr new_distributor = boost::make_shared<Distributor>(this_filter->iter_vector[0], this_filter->iter_vector[1], sock_ptr );
 		Client::servise.post([&new_distributor]() {new_distributor->execute_command(); });
 	}
 	else

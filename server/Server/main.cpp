@@ -12,6 +12,8 @@ void handle_accept(SockFilter::ptr filter, const error_code& err)
 	acceptor.async_accept(filter->socket(), boost::bind(handle_accept, filter, _1));
 }
 
+
+
 int main()
 {
 	SockFilter::ptr new_filter = SockFilter::new_filter();

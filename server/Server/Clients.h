@@ -26,6 +26,8 @@ public:
 	~Client() {}
 
 	typedef boost::shared_ptr<Client> ptr;
+	//-------------------------------------------
+
 
 	//SelfPointer for new clients
 	static ptr new_client(int Id, std::string Nickname, std::string password)
