@@ -8,7 +8,8 @@ class SockFilter : public boost::enable_shared_from_this<SockFilter>
 {
 private:
 	ip::tcp::socket buffer_socket;
-	std::vector<std::string> iter_vector;
+	boost::shared_ptr<ip::tcp::socket> sock_ptr;
+	std::pair<std::string, std::string> id_comm;
 	enum {max_size = 1024};
 	char read_buffer[max_size];
 	bool started;
@@ -22,16 +23,13 @@ public:
 	SockFilter();
 	~SockFilter();
 
-	boost::shared_ptr<ip::tcp::socket> sock_ptr = boost::make_shared<ip::tcp::socket>(socket());
-
 	typedef boost::shared_ptr<SockFilter> ptr;
 	//-------------------------------------------
 
-
 	//SelfPointer for new filter
 	static ptr new_filter();
-	
-	//Socket getter
+
+	//socket getter
 	ip::tcp::socket& socket();
 
 	void start();

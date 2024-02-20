@@ -17,24 +17,19 @@ class Client : public boost::enable_shared_from_this<Client>
 private:
 	int User_id;
 	std::string Nickname;
-	std::string password;
 
 public:
-	Client(int Id, std::string Nickname, std::string password) : User_id(Id), Nickname(Nickname), password(password),
+	Client(int Id, std::string Nickname) : User_id(Id), Nickname(Nickname),
 		txt_msg_sock(nullptr), file_msg_sock(nullptr), acc_data_sock(nullptr) {}
 
 	~Client() {}
 
 	typedef boost::shared_ptr<Client> ptr;
+
+	static std::vector<Client> clients_vector;
+	static std::vector<Client::ptr> clients_ptr_vector;
 	//-------------------------------------------
 
-
-	//SelfPointer for new clients
-	static ptr new_client(int Id, std::string Nickname, std::string password)
-	{
-		ptr new_client = boost::make_shared<Client>(Id, Nickname, password);
-		return new_client; 
-	}
 
 	//SelfPointer
 	ptr self_pointer(){ return shared_from_this(); }
@@ -42,17 +37,16 @@ public:
 	//user data getters
 	const int get_UserId() { return this->User_id; }
 	const std::string get_nickname() { return this->Nickname; }
-	const std::string get_password() { return this->password; }
 
 	//socket setters
-	void set_txt_msg_sock(ip::tcp::socket&& socket) { txt_msg_sock = std::make_unique<ip::tcp::socket>(std::move(socket)); }
-	void set_file_msg_sock(ip::tcp::socket&& socket) { file_msg_sock = std::make_unique<ip::tcp::socket>(std::move(socket)); }
-	void set_acc_data_sock(ip::tcp::socket&& socket) { acc_data_sock = std::make_unique<ip::tcp::socket>(std::move(socket)); }
+	void set_txt_msg_sock(ip::tcp::socket& socket) { txt_msg_sock = boost::make_shared<ip::tcp::socket>(boost::move(socket)); }
+	void set_file_msg_sock(ip::tcp::socket& socket) { file_msg_sock = boost::make_shared<ip::tcp::socket>(boost::move(socket)); }
+	void set_acc_data_sock(ip::tcp::socket& socket) { acc_data_sock = boost::make_shared<ip::tcp::socket>(boost::move(socket)); }
 
 	//sockets
-	std::unique_ptr<ip::tcp::socket> txt_msg_sock;
-	std::unique_ptr<ip::tcp::socket> file_msg_sock;
-	std::unique_ptr<ip::tcp::socket> acc_data_sock;
+	boost::shared_ptr<ip::tcp::socket> txt_msg_sock;
+	boost::shared_ptr<ip::tcp::socket> file_msg_sock;
+	boost::shared_ptr<ip::tcp::socket> acc_data_sock;
 
 	static io_context servise;
 	
