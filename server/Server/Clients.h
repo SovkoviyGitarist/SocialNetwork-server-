@@ -17,10 +17,14 @@ class Client : public boost::enable_shared_from_this<Client>
 private:
 	int User_id;
 	std::string Nickname;
+	std::string Password;
 
 public:
-	Client(int Id, std::string Nickname) : User_id(Id), Nickname(Nickname),
-		txt_msg_sock(nullptr), file_msg_sock(nullptr), acc_data_sock(nullptr) {}
+	Client(int id, std::string nickname, std::string password) : User_id(id), Nickname(nickname), Password(password),
+		txt_msg_sock(nullptr), file_msg_sock(nullptr), acc_data_sock(nullptr) 
+	{
+		std::cout << "new client" << std::endl;
+	}
 
 	~Client() {}
 
@@ -37,6 +41,7 @@ public:
 	//user data getters
 	const int get_UserId() { return this->User_id; }
 	const std::string get_nickname() { return this->Nickname; }
+	const std::string get_password() { return this->Password; }
 
 	//socket setters
 	void set_txt_msg_sock(ip::tcp::socket& socket) { txt_msg_sock = boost::make_shared<ip::tcp::socket>(boost::move(socket)); }

@@ -3,6 +3,7 @@
 std::vector<Client> Client::clients_vector;
 std::vector<boost::shared_ptr<Client>> Client::clients_ptr_vector;
 io_context Client::servise;
+
 ip::tcp::acceptor acceptor(Client::servise, ip::tcp::endpoint(ip::tcp::v4(), 8001));
 
 

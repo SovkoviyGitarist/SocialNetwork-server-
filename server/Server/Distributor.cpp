@@ -1,7 +1,10 @@
 #include "Distributor.h"
 
 
-Distributor::Distributor(std::string& UserId, std::string& command, boost::shared_ptr<ip::tcp::socket> sock) : UserId(UserId), command(command), sock_ptr{sock} {}
+Distributor::Distributor(std::string& UserId, std::string& command, boost::shared_ptr<ip::tcp::socket> sock) : UserId(std::stoi(UserId)), command(command), sock_ptr{sock} 
+{
+	std::cout << "new Distributor" << std::endl;
+}
 
 Distributor::~Distributor()
 {
@@ -18,29 +21,67 @@ void Distributor::execute_command()
 
 	if (boost::regex_search(this_distributor->command, new_client_expr))
 	{
-		boost::regex reg (":");
-		boost::sregex_token_iterator iter(this_distributor->command.begin(), this_distributor->command.end(), reg, -1);
-		this_distributor->nick_pass.first = *(++iter);
-		this_distributor->nick_pass.second = *(++iter);
+		split_command();
 
 		make_new_user(this_distributor->nick_pass.first, this_distributor->nick_pass.second);
 	}
 
 	else if (boost::regex_search(this_distributor->command, existing_client_expr))
 	{
+		split_command();
 
+		for (auto& client_ptr : Client::clients_ptr_vector)
+		{
+			if ((client_ptr->get_nickname()) == (this_distributor->nick_pass.first) && (client_ptr->get_password()) == (this_distributor->nick_pass.second))
+			{
+				client_ptr->set_acc_data_sock(*(this_distributor->sock_ptr));
+				// write function to send acc data to user or something like that
+			}
+			else
+			{
+				std::string msg("ERROR: invalid nickname or password");
+				async_write(*(this_distributor->sock_ptr), buffer(msg.c_str(), msg.size()), [](const error_code& err, size_t bytes) {err ? 0 : 1;});//check callback
+			}
+		}
 	}
 
 	else if (boost::regex_search(this_distributor->command, txt_sock_expr))
 	{
+		for (auto& client_ptr : Client::clients_ptr_vector)
+		{
+			if ((this_distributor->UserId) == (client_ptr->get_UserId()))
+			{
+				client_ptr->set_txt_msg_sock(*(this_distributor->sock_ptr));
+
+				// write function to send text msg/chat list to user or something like that
+			}
+		}
 
 	}
 
 	else if (boost::regex_search(this_distributor->command, file_sock_expr))
 	{
+		for (auto& client_ptr : Client::clients_ptr_vector)
+		{
+			if ((this_distributor->UserId) == (client_ptr->get_UserId()))
+			{
+				client_ptr->set_file_msg_sock(*(this_distributor->sock_ptr));
 
+				// write function to send existing files list to user or something like that
+			}
+		}
 	}
 }
+
+void Distributor::split_command()
+{
+	ptr this_distributor = shared_from_this();
+	boost::regex reg(":");
+	boost::sregex_token_iterator iter(this_distributor->command.begin(), this_distributor->command.end(), reg, -1);
+	this_distributor->nick_pass.first = *(++iter);
+	this_distributor->nick_pass.second = *(++iter);
+}
+
 
 void Distributor::make_new_user(std::string &nickname, std::string &password)
 {
@@ -61,7 +102,7 @@ void Distributor::make_new_user(std::string &nickname, std::string &password)
 		query.exec("INSERT INTO public.users(nickname, password) VALUES ('" + nickname + "', '" + password + "');");
 		pqxx::result result = query.exec("SELECT id FROM users WHERE nickname = '" + nickname + "';");
 
-		this_distributor->UserId = result.front()["id"].as<std::string>();
+		this_distributor->UserId = result.front()["id"].as<int>();
 
 		query.commit();
 		
@@ -73,10 +114,16 @@ void Distributor::make_new_user(std::string &nickname, std::string &password)
 	}
 
 	//Create new user as an object, push him and his reference into vector
-	Client::ptr new_client = boost::make_shared<Client>(std::stoi(this_distributor->UserId), nickname);
+	Client::ptr new_client = boost::make_shared<Client>(this_distributor->UserId, nickname, password);
 	Client::clients_vector.push_back(*new_client);
 	Client::clients_ptr_vector.push_back(new_client);
 	new_client->set_acc_data_sock(*(this_distributor->sock_ptr));
+	//Send id to client
+	std::string msg(std::to_string(this_distributor->UserId));
+	async_write(*(this_distributor->sock_ptr), buffer(msg.c_str(), msg.size()), [](const error_code& err, size_t bytes) {err ? 0 : 1; });//check callback
+
 }
+
+
 
 
