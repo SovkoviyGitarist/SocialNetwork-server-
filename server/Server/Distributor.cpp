@@ -73,14 +73,31 @@ void Distributor::execute_command()
 	}
 }
 
+std::string Distributor::hash_func(const std::string& password)
+{
+	md5 hash;
+	md5::digest_type digest;
+	hash.process_bytes(password.data(), password.size());
+	hash.get_digest(digest);
+	const auto char_digest = reinterpret_cast<const char*>(&digest);
+	std::string result;
+	for (int i = 0; i < 16; i++)
+	{
+		result += char_digest[i];
+	}
+	return result;
+}
+
 void Distributor::split_command()
 {
 	ptr this_distributor = shared_from_this();
 	boost::regex reg(":");
 	boost::sregex_token_iterator iter(this_distributor->command.begin(), this_distributor->command.end(), reg, -1);
 	this_distributor->nick_pass.first = *(++iter);
-	this_distributor->nick_pass.second = *(++iter);
+	this_distributor->nick_pass.second = hash_func(*(++iter));
 }
+
+
 
 
 void Distributor::make_new_user(std::string &nickname, std::string &password)

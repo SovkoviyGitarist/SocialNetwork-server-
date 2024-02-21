@@ -128,11 +128,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="ClientLogic.h" />
     <ClInclude Include="Clients.h" />
     <ClInclude Include="Distributor.h" />
     <ClInclude Include="SocketFilter.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ClientLogic.cpp" />
     <ClCompile Include="Distributor.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="SocketFilter.cpp" />

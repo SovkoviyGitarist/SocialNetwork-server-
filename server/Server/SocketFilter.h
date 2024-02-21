@@ -1,7 +1,5 @@
 #pragma once
 #include "Distributor.h"
-#include <boost/bind.hpp>
-#include <boost/noncopyable.hpp>
 
 
 class SockFilter : public boost::enable_shared_from_this<SockFilter>
