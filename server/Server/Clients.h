@@ -32,6 +32,10 @@ public:
 
 	static std::vector<Client> clients_vector;
 	static std::vector<Client::ptr> clients_ptr_vector;
+	std::vector<std::string> client_acc_data_vector;
+	std::vector<std::string> client_file_msg_vector;
+	//each subvector contains txt chats relative to each individual user
+	std::vector<std::vector<std::string>> client_txt_chats_vector;
 	//-------------------------------------------
 
 
