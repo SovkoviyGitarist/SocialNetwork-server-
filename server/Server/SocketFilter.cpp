@@ -45,18 +45,21 @@ void SockFilter::do_read()
 
 size_t SockFilter::read_complete(const error_code& err, size_t bytes)
 {
+	boost::regex reg("END_OF_MESSAGE");
+	std::string msg(read_buffer, read_buffer + bytes);
 	if (err)
 		return 0;
-	else
+	else if (boost::regex_search(msg, reg))
 	{
-		std::string msg(read_buffer, read_buffer + bytes);
+		std::cout << msg << "\n";
 		boost::regex reg("\\|");
 		boost::sregex_token_iterator iter(msg.begin(), msg.end(), reg, -1);
 		boost::sregex_token_iterator end;
 		id_comm.first = *(iter);
 		id_comm.second = *(++iter);
-		return 1;
+		return 0;
 	}
+	return 1;
 }
 
 void SockFilter::on_read(const error_code& err, size_t bytes)
