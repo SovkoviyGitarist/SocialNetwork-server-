@@ -3,24 +3,18 @@
 #include <pqxx/pqxx>
 #include <boost/regex.hpp>
 #include <boost/bind.hpp>
-#include <boost/noncopyable.hpp>
 
 
 
-class ClientLogic
+class ClientLogic : public Client
 {
+private:
+	Client::ptr this_client;
+
 public:
-	ClientLogic();
+	ClientLogic(Client::ptr client_ptr);
 	~ClientLogic();
 
-private:
+	typedef boost::shared_ptr<Client> ptr;
 
 };
-
-ClientLogic::ClientLogic()
-{
-}
-
-ClientLogic::~ClientLogic()
-{
-}

@@ -7,6 +7,7 @@
 #include <boost/make_shared.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/system/error_code.hpp>
+#include <boost/noncopyable.hpp>
 
 using namespace boost::asio;
 using namespace boost::system;
@@ -14,28 +15,39 @@ using namespace boost::system;
 
 class Client : public boost::enable_shared_from_this<Client>
 {
-private:
+protected:
 	int User_id;
 	std::string Nickname;
 	std::string Password;
 
+	std::vector<std::string> acc_data; //contains client account data
+	std::vector<std::pair<std::string, std::string>> chats_info; //contains pairs with id and nickname of users, which have chat with client
+	std::pair<std::string, std::string> file; //container for file name and file data
+
+	//each subvector below contains chats/file names relative to each individual user
+	std::vector<std::vector<std::string>> file_names;
+	std::vector<std::vector<std::string>> chats;
+
+	Client() {}
+
 public:
+
 	Client(int id, std::string nickname, std::string password) : User_id(id), Nickname(nickname), Password(password),
 		txt_msg_sock(nullptr), file_msg_sock(nullptr), acc_data_sock(nullptr) 
 	{
 		std::cout << "new client" << std::endl;
 	}
 
-	~Client() {}
+	~Client() 
+	{
+		std::cout << "distract new client" << std::endl;
+	}
 
 	typedef boost::shared_ptr<Client> ptr;
 
 	static std::vector<Client> clients_vector;
 	static std::vector<Client::ptr> clients_ptr_vector;
-	std::vector<std::string> client_acc_data_vector;
-	std::vector<std::string> client_file_msg_vector;
-	//each subvector contains txt chats relative to each individual user
-	std::vector<std::vector<std::string>> client_txt_chats_vector;
+
 	//-------------------------------------------
 
 

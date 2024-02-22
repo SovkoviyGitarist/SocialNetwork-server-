@@ -8,6 +8,7 @@ Distributor::Distributor(std::string& UserId, std::string& command, boost::share
 
 Distributor::~Distributor()
 {
+	std::cout << "Distract new Distributor" << std::endl;
 }
 
 void Distributor::execute_command()
@@ -24,7 +25,6 @@ void Distributor::execute_command()
 		split_command();
 
 		make_new_user(this_distributor->nick_pass.first, this_distributor->nick_pass.second);
-		// write function to send acc data to user or something like that
 	}
 
 	else if (boost::regex_search(this_distributor->command, existing_client_expr))
@@ -136,8 +136,9 @@ void Distributor::make_new_user(std::string &nickname, std::string &password)
 	Client::clients_vector.push_back(*new_client);
 	Client::clients_ptr_vector.push_back(new_client);
 	new_client->set_acc_data_sock(*(this_distributor->sock_ptr));
-	// write function to send acc data to user or something like that
 
+	//creating of new logic object will start processing of client
+	ClientLogic::ptr new_logic = boost::make_shared<ClientLogic>(new_client);
 }
 
 

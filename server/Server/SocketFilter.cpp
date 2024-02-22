@@ -7,10 +7,13 @@
 SockFilter::SockFilter() : buffer_socket(Client::servise), started(false) 
 {
 	sock_ptr = boost::make_shared<ip::tcp::socket>(boost::move(buffer_socket));
-	std::cout << "new_filter" << std::endl;
+	std::cout << "new filter" << std::endl;
 }
 
-SockFilter::~SockFilter() {}
+SockFilter::~SockFilter() 
+{
+	std::cout << "Distract new filter" << std::endl;
+}
 
 SockFilter::ptr SockFilter::new_filter()
 {
