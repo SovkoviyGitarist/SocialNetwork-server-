@@ -9,6 +9,8 @@
 #include <boost/system/error_code.hpp>
 #include <boost/noncopyable.hpp>
 
+class ClientLogic;
+
 using namespace boost::asio;
 using namespace boost::system;
 
@@ -48,11 +50,13 @@ public:
 	static std::vector<Client> clients_vector;
 	static std::vector<Client::ptr> clients_ptr_vector;
 
+	boost::shared_ptr<ClientLogic> this_logic;
+
 	//-------------------------------------------
 
 
-	//SelfPointer
-	ptr self_pointer(){ return shared_from_this(); }
+	void logic_pointer(boost::shared_ptr<ClientLogic> self_pointer) { this_logic = self_pointer; }
+
 
 	//user data getters
 	const int get_UserId() { return this->User_id; }
@@ -70,6 +74,6 @@ public:
 	boost::shared_ptr<ip::tcp::socket> acc_data_sock;
 
 	static io_context servise;
-	
+
 };
 

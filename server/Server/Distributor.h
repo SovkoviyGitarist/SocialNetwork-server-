@@ -1,6 +1,8 @@
 #pragma once
 #include "ClientLogic.h"
 #include <boost/uuid/detail/md5.hpp>
+#include <sstream>
+#include <bitset>
 
 using namespace boost::uuids::detail;
 
@@ -25,8 +27,12 @@ public:
     boost::shared_ptr<ip::tcp::socket> sock_ptr;
 
     typedef boost::shared_ptr<Distributor> ptr;
+
+	ptr this_distributor;
     //-------------------------------------------
 
 	void execute_command();
+
+	void self_pointer(Distributor::ptr self_pointer);
 
 };

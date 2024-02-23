@@ -59,7 +59,8 @@ size_t SockFilter::read_complete(const error_code& err, size_t bytes)
 		id_comm.second = *(++iter);
 		return 0;
 	}
-	return 1;
+	else
+		return 1;
 }
 
 void SockFilter::on_read(const error_code& err, size_t bytes)
@@ -68,7 +69,9 @@ void SockFilter::on_read(const error_code& err, size_t bytes)
 	{
 		SockFilter::ptr this_filter = shared_from_this();
 		Distributor::ptr new_distributor = boost::make_shared<Distributor>(this_filter->id_comm.first, this_filter->id_comm.second, sock_ptr );
+		new_distributor->self_pointer(new_distributor);
 		Client::servise.post([&new_distributor]() {new_distributor->execute_command(); }); //check this while testing
+
 	}
 	else
 	{

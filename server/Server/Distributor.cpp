@@ -13,8 +13,6 @@ Distributor::~Distributor()
 
 void Distributor::execute_command()
 {
-	ptr this_distributor = shared_from_this();
-
 	boost::regex new_client_expr("make_new_client");
 	boost::regex existing_client_expr("connect_to_existing");
 	boost::regex txt_sock_expr("connect_to_txt_msg_sock");
@@ -74,6 +72,8 @@ void Distributor::execute_command()
 	}
 }
 
+
+
 std::string Distributor::hash_func(const std::string& password)
 {
 	md5 hash;
@@ -84,14 +84,15 @@ std::string Distributor::hash_func(const std::string& password)
 	std::string result;
 	for (int i = 0; i < 16; i++)
 	{
-		result += char_digest[i];
+		result += std::to_string(char_digest[i]);
 	}
+
 	return result;
 }
 
+
 void Distributor::split_command()
 {
-	ptr this_distributor = shared_from_this();
 	boost::regex reg(":");
 	boost::sregex_token_iterator iter(this_distributor->command.begin(), this_distributor->command.end(), reg, -1);
 	this_distributor->nick_pass.first = *(++iter);
@@ -103,8 +104,6 @@ void Distributor::split_command()
 
 void Distributor::make_new_user(std::string &nickname, std::string &password)
 {
-	ptr this_distributor = shared_from_this();
-
 	try
 	{
 		//create new user in database and then get his id from there
@@ -133,12 +132,20 @@ void Distributor::make_new_user(std::string &nickname, std::string &password)
 
 	//Create new user as an object, push him and his reference into vector
 	Client::ptr new_client = boost::make_shared<Client>(this_distributor->UserId, nickname, password);
-	Client::clients_vector.push_back(*new_client);
+	Client::clients_vector.push_back(std::move(*new_client));
 	Client::clients_ptr_vector.push_back(new_client);
+
 	new_client->set_acc_data_sock(*(this_distributor->sock_ptr));
 
-	//creating of new logic object will start processing of client
-	ClientLogic::ptr new_logic = boost::make_shared<ClientLogic>(new_client);
+	//creating of new logic object and linking it with current client
+	boost::shared_ptr<ClientLogic> new_logic = boost::make_shared<ClientLogic>(new_client);
+	new_client->logic_pointer(new_logic);
+}
+
+
+void Distributor::self_pointer(Distributor::ptr self_pointer)
+{
+	this_distributor = self_pointer;
 }
 
 
