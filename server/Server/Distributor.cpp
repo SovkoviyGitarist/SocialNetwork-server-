@@ -24,14 +24,17 @@ void Distributor::execute_command()
 
 		Client::ptr new_client = make_new_user(this_distributor->nick_pass.first, this_distributor->nick_pass.second);
 
-		//new_client->this_logic->start(); //start sending of acc data to user
+		Client::servise.post([&new_client]() {new_client->this_logic->start(); }); //start sending of acc data to user
+
+		this_distributor.reset();
+		return;
 	}
 
 	else if (boost::regex_search(this_distributor->command, existing_client_expr))
 	{
 		split_command();
 
-		for (auto& client_ptr : Client::clients_ptr_vector)
+		for (auto& client_ptr : Client::clients_ptr_vector) //rewrite to binary search with help of Id !!!
 		{
 			if ((client_ptr->get_nickname()) == (this_distributor->nick_pass.first) && (client_ptr->get_password()) == (this_distributor->nick_pass.second))
 			{
@@ -40,26 +43,33 @@ void Distributor::execute_command()
 				boost::shared_ptr<ClientLogic> new_logic = boost::make_shared<ClientLogic>(client_ptr);
 				client_ptr->logic_pointer(new_logic);
 				
-				//client_ptr->this_logic->start(); //start sending of acc data to user
+				Client::servise.post([&client_ptr]() {client_ptr->this_logic->start(); }); //start sending of acc data to user
+
+				this_distributor.reset();
 				return;
 			}
 			else
 			{
 				std::string msg("ERROR: invalid nickname or password");
 				async_write(*(this_distributor->sock_ptr), buffer(msg.c_str(), msg.size()), [](const error_code& err, size_t bytes) {err ? 1 : 0;});//check callback
+				this_distributor.reset();
+				return;
 			}
 		}
 	}
 
 	else if (boost::regex_search(this_distributor->command, txt_sock_expr))
 	{
-		for (auto& client_ptr : Client::clients_ptr_vector)
+		for (auto& client_ptr : Client::clients_ptr_vector) //rewrite to binary search with help of Id!!!
 		{
 			if ((this_distributor->UserId) == (client_ptr->get_UserId()))
 			{
 				client_ptr->set_txt_msg_sock(*(this_distributor->sock_ptr));
 
-				//client_ptr->this_logic->send_chat_list();// write function to send chat list to client
+				Client::servise.post([&client_ptr]() {client_ptr->this_logic->send_chat_list(); });// write function to send chat list to client
+
+				this_distributor.reset();
+				return;
 			}
 		}
 
@@ -67,13 +77,16 @@ void Distributor::execute_command()
 
 	else if (boost::regex_search(this_distributor->command, file_sock_expr))
 	{
-		for (auto& client_ptr : Client::clients_ptr_vector)
+		for (auto& client_ptr : Client::clients_ptr_vector) //rewrite to binary search with help of Id!!!
 		{
 			if ((this_distributor->UserId) == (client_ptr->get_UserId()))
 			{
 				client_ptr->set_file_msg_sock(*(this_distributor->sock_ptr));
 
-				//client_ptr->this_logic->send_file_list();// write function to send files list to client
+				Client::servise.post([&client_ptr]() {client_ptr->this_logic->send_file_list(); });// write function to send files list to client
+
+				this_distributor.reset();
+				return;
 			}
 		}
 	}
