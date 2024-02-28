@@ -18,9 +18,56 @@ void handle_accept(SockFilter::ptr filter, const error_code& err)
 
 int main()
 {
-	//need to write a flag of online/offline user, so that server could know, send message data to user or just save it
-	//And write auto fill of clients vector
+	//autofill of clients_vector and clients_ptr_vector
+	if (Client::clients_vector.empty())
+	{
+		try
+		{
+			pqxx::connection conn("dbname = SN_DB user = postgres password = root hostaddr = 127.0.0.1 port = 5432");
+			if (conn.is_open()) 
+			{
+				std::cout << "Opened database successfully: " << conn.dbname() << std::endl;
+			}
+			else 
+				throw std::runtime_error("Can't open database");
+
+			pqxx::work query(conn);
+			pqxx::result result = query.exec("SELECT * FROM public.users ORDER BY id ASC ");
+
+			for (const auto& res : result)
+			{
+				boost::shared_ptr<Client> new_client = boost::make_shared<Client>(res["id"].as<int>(), res["nickname"].as<std::string>(), res["password"].as<std::string>());
+				Client::clients_vector.push_back(std::move(*new_client));
+				Client::ptr new_client_ptr;
+
+				for (auto& client : Client::clients_vector) // write binary search here!!!
+				{
+					if ((res["id"].as<int>()) == (client.get_UserId()))
+					{
+						new_client_ptr = boost::make_shared<Client>(client);
+						Client::clients_ptr_vector.push_back(std::move(new_client_ptr));
+						break;
+					}
+				}
+			}
+			query.commit();
+		}
+
+		catch (const std::runtime_error& e)
+		{
+			std::cerr << e.what() << std::endl;
+			throw; //write better exception later
+		}
+
+		catch (const std::exception& e)
+		{
+			std::cerr << e.what() << std::endl;
+			throw; //write better exception later
+		}
+	}
+	
 	SockFilter::ptr filter = SockFilter::new_filter();
 	acceptor.async_accept(filter->socket(), boost::bind(handle_accept, filter, _1));
 	Client::servise.run();
+	return 0;
 }

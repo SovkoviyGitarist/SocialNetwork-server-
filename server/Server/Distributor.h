@@ -14,7 +14,7 @@ private:
 	std::string command;
     std::pair<std::string, std::string> nick_pass;
 
-	void make_new_user(std::string& nickname, std::string& password);
+	Client::ptr make_new_user(std::string& nickname, std::string& password);
 
 	void split_command();
 
