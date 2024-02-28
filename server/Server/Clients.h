@@ -67,14 +67,9 @@ public:
 	const std::string get_password() { return this->Password; }
 
 	//socket setters
-	void set_txt_msg_sock(ip::tcp::socket& socket) { this->txt_msg_sock = boost::make_shared<ip::tcp::socket>(boost::move(socket)); }
-	void set_file_msg_sock(ip::tcp::socket& socket) { this->file_msg_sock = boost::make_shared<ip::tcp::socket>(boost::move(socket)); }
-	void set_acc_data_sock(ip::tcp::socket& socket) { this->acc_data_sock = boost::make_shared<ip::tcp::socket>(boost::move(socket)); }
-
-	//flag setters
-	void set_txt_msg_sock_flag() { this->txt_msg_sock_flag = true; }
-	void set_file_msg_sock_flag() { this->file_msg_sock_flag = true; }
-	void set_acc_data_sock_flag() { this->acc_data_sock_flag = true; }
+	void set_txt_msg_sock(ip::tcp::socket& socket) { this->txt_msg_sock = boost::make_shared<ip::tcp::socket>(boost::move(socket)); this->txt_msg_sock_flag = true;}
+	void set_file_msg_sock(ip::tcp::socket& socket) { this->file_msg_sock = boost::make_shared<ip::tcp::socket>(boost::move(socket)); this->file_msg_sock_flag = true;}
+	void set_acc_data_sock(ip::tcp::socket& socket) { this->acc_data_sock = boost::make_shared<ip::tcp::socket>(boost::move(socket));  this->acc_data_sock_flag = true;}
 
 	//sockets
 	boost::shared_ptr<ip::tcp::socket> txt_msg_sock;

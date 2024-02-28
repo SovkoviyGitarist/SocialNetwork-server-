@@ -36,7 +36,6 @@ void Distributor::execute_command()
 			if ((client_ptr->get_nickname()) == (this_distributor->nick_pass.first) && (client_ptr->get_password()) == (this_distributor->nick_pass.second))
 			{
 				client_ptr->set_acc_data_sock(*(this_distributor->sock_ptr));
-				client_ptr->set_acc_data_sock_flag();
 
 				boost::shared_ptr<ClientLogic> new_logic = boost::make_shared<ClientLogic>(client_ptr);
 				client_ptr->logic_pointer(new_logic);
@@ -148,7 +147,6 @@ Client::ptr Distributor::make_new_user(std::string &nickname, std::string &passw
 	Client::ptr new_client = boost::make_shared<Client>(this_distributor->UserId, nickname, password);
 
 	new_client->set_acc_data_sock(*(this_distributor->sock_ptr));
-	new_client->set_acc_data_sock_flag();
 
 	Client::clients_ptr_vector.push_back(new_client);
 			
