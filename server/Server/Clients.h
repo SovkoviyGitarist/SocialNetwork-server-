@@ -51,7 +51,6 @@ public:
 
 	typedef boost::shared_ptr<Client> ptr;
 
-	static std::vector<Client> clients_vector;
 	static std::vector<Client::ptr> clients_ptr_vector;
 
 	boost::shared_ptr<ClientLogic> this_logic;

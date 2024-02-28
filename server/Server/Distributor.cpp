@@ -144,29 +144,19 @@ Client::ptr Distributor::make_new_user(std::string &nickname, std::string &passw
 		throw; //write better exception later
 	}
 
-	//Create new user as an object, push him and his reference into vector
+	//Create new user as an object and push his reference into vector
 	Client::ptr new_client = boost::make_shared<Client>(this_distributor->UserId, nickname, password);
-	Client::ptr new_client_ptr;
 
 	new_client->set_acc_data_sock(*(this_distributor->sock_ptr));
 	new_client->set_acc_data_sock_flag();
 
-	Client::clients_vector.push_back(std::move(*new_client));
-	for (auto& client : Client::clients_vector) // write binary search here!!!
-	{
-		if ((this_distributor->UserId) == (client.get_UserId()))
-		{
-			new_client_ptr = boost::make_shared<Client>(client);
-			Client::clients_ptr_vector.push_back(new_client_ptr);
-			break;
-		}
-	}
-
+	Client::clients_ptr_vector.push_back(new_client);
+			
 	//creating of new logic object and linking it with current client
-	boost::shared_ptr<ClientLogic> new_logic = boost::make_shared<ClientLogic>(new_client_ptr);
-	new_client_ptr->logic_pointer(new_logic);
+	boost::shared_ptr<ClientLogic> new_logic = boost::make_shared<ClientLogic>(new_client);
+	new_client->logic_pointer(new_logic);
 
-	return new_client_ptr;
+	return new_client;
 }
 
 

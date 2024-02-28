@@ -1,6 +1,5 @@
 #include "SocketFilter.h"
 
-std::vector<Client> Client::clients_vector;
 std::vector<boost::shared_ptr<Client>> Client::clients_ptr_vector;
 io_context Client::servise;
 
@@ -18,8 +17,8 @@ void handle_accept(SockFilter::ptr filter, const error_code& err)
 
 int main()
 {
-	//autofill of clients_vector and clients_ptr_vector
-	if (Client::clients_vector.empty())
+	//autofill of clients_ptr_vector
+	if (Client::clients_ptr_vector.empty())
 	{
 		try
 		{
@@ -37,18 +36,7 @@ int main()
 			for (const auto& res : result)
 			{
 				boost::shared_ptr<Client> new_client = boost::make_shared<Client>(res["id"].as<int>(), res["nickname"].as<std::string>(), res["password"].as<std::string>());
-				Client::clients_vector.push_back(std::move(*new_client));
-				Client::ptr new_client_ptr;
-
-				for (auto& client : Client::clients_vector) // write binary search here!!!
-				{
-					if ((res["id"].as<int>()) == (client.get_UserId()))
-					{
-						new_client_ptr = boost::make_shared<Client>(client);
-						Client::clients_ptr_vector.push_back(std::move(new_client_ptr));
-						break;
-					}
-				}
+				Client::clients_ptr_vector.push_back(std::move(new_client));
 			}
 			query.commit();
 		}
