@@ -18,13 +18,13 @@ void Distributor::execute_command()
 	boost::regex txt_sock_expr("connect_to_txt_msg_sock");
 	boost::regex file_sock_expr("connect_to_file_msg_sock");
 
-	if (boost::regex_search(this_distributor->command, new_client_expr))
+	if (boost::regex_search(this_distributor->command, new_client_expr)) //write a unick nickname check
 	{
 		split_command();
 
 		Client::ptr new_client = make_new_user(this_distributor->nick_pass.first, this_distributor->nick_pass.second);
 
-		Client::servise.post([&new_client]() {new_client->this_logic->start(); }); //start sending of acc data to user
+		Client::acc_service.post([&new_client]() {new_client->this_logic->set_default_settings(); }); //start sending of acc data to user in special thread
 
 		this_distributor.reset();
 		return;
@@ -43,7 +43,7 @@ void Distributor::execute_command()
 				boost::shared_ptr<ClientLogic> new_logic = boost::make_shared<ClientLogic>(client_ptr);
 				client_ptr->logic_pointer(new_logic);
 				
-				Client::servise.post([&client_ptr]() {client_ptr->this_logic->start(); }); //start sending of acc data to user
+				Client::acc_service.post([&client_ptr]() {client_ptr->this_logic->send_acc_data(); }); //start sending of acc data to user in special thread
 
 				this_distributor.reset();
 				return;
@@ -66,7 +66,7 @@ void Distributor::execute_command()
 			{
 				client_ptr->set_txt_msg_sock(*(this_distributor->sock_ptr));
 
-				Client::servise.post([&client_ptr]() {client_ptr->this_logic->send_chat_list(); });// write function to send chat list to client
+				Client::txt_service.post([&client_ptr]() {client_ptr->this_logic->send_chat_list(); });// write function to send chat list to client in special thread
 
 				this_distributor.reset();
 				return;
@@ -83,7 +83,8 @@ void Distributor::execute_command()
 			{
 				client_ptr->set_file_msg_sock(*(this_distributor->sock_ptr));
 
-				Client::servise.post([&client_ptr]() {client_ptr->this_logic->send_file_list(); });// write function to send files list to client
+				
+				Client::file_service.post([&client_ptr]() {client_ptr->this_logic->send_file_list(); });// write function to send files list to client in special thread
 
 				this_distributor.reset();
 				return;

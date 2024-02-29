@@ -8,6 +8,8 @@
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/noncopyable.hpp>
+#include <boost/thread.hpp>
+#include <thread>
 
 class ClientLogic;
 
@@ -25,14 +27,6 @@ protected:
 	bool txt_msg_sock_flag;
 	bool file_msg_sock_flag;
 	bool acc_data_sock_flag;
-
-	std::vector<std::string> acc_data; //contains client account data
-	std::vector<std::pair<std::string, std::string>> chats_info; //contains pairs with id and nickname of users, which have chat with client
-	std::pair<std::string, std::string> file; //container for file name and file data
-
-	//each subvector below contains chats/file names relative to each individual user
-	std::vector<std::vector<std::string>> file_names;
-	std::vector<std::vector<std::string>> chats;
 
 	Client() {}
 
@@ -54,6 +48,14 @@ public:
 	static std::vector<Client::ptr> clients_ptr_vector;
 
 	boost::shared_ptr<ClientLogic> this_logic;
+
+	std::vector<std::string> acc_data; //contains client account data
+	std::vector<std::pair<std::string, std::string>> chats_info; //contains pairs with id and nickname of users, which have chat with client
+	std::pair<std::string, std::string> file; //container for file name and file data
+
+	//each subvector below contains chats/file names relative to each individual user
+	std::vector<std::vector<std::string>> file_names;
+	std::vector<std::vector<std::string>> chats;
 
 	//-------------------------------------------
 
@@ -78,5 +80,11 @@ public:
 
 	static io_context servise;
 
-};
+	static io_context acc_service;
+	static io_context file_service;
+	static io_context txt_service;
 
+	static boost::thread acc_thread;
+	static boost::thread file_thread;
+	static boost::thread txt_thread;
+};

@@ -3,6 +3,14 @@
 std::vector<boost::shared_ptr<Client>> Client::clients_ptr_vector;
 io_context Client::servise;
 
+io_context Client::acc_service;
+io_context Client::file_service;
+io_context Client::txt_service;
+
+boost::thread Client::acc_thread([]() {acc_service.run(); });
+boost::thread Client::file_thread([]() {file_service.run(); });
+boost::thread Client::txt_thread([]() {txt_service.run(); });
+
 ip::tcp::acceptor acceptor(Client::servise, ip::tcp::endpoint(ip::tcp::v4(), 8001));
 
 
@@ -56,6 +64,9 @@ int main()
 	
 	SockFilter::ptr filter = SockFilter::new_filter();
 	acceptor.async_accept(filter->socket(), boost::bind(handle_accept, filter, _1));
+	Client::acc_thread.join();
+	Client::file_thread.join();
+	Client::txt_thread.join();
 	Client::servise.run();
 	return 0;
 }
