@@ -54,7 +54,6 @@ size_t SockFilter::read_complete(const error_code& err, size_t bytes)
 		std::cout << msg << "\n";
 		boost::regex reg("\\|");
 		boost::sregex_token_iterator iter(msg.begin(), msg.end(), reg, -1);
-		boost::sregex_token_iterator end;
 		id_comm.first = *(iter);
 		id_comm.second = *(++iter);
 		return 0;

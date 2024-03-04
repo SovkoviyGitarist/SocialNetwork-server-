@@ -60,10 +60,47 @@ void ClientLogic::acc_data_distributor(const error_code& err, size_t bytes)
 
 void ClientLogic::change_avatar()
 {
+	boost::regex reg("\\|");
+	boost::sregex_token_iterator iter(this_client->this_logic->acc_data_buffer.begin(), this_client->this_logic->acc_data_buffer.end(), reg, -1);
+	this_client->acc_data[0] = "Avatar|"+ *(++iter);
+
+	std::stringstream ser_vec;
+	binary_oarchive oa(ser_vec);
+	oa << this_client->acc_data;
+	std::string msg("acc_data|" + ser_vec.str());
+	async_write(*(this_client->acc_data_sock), buffer(msg.c_str(), msg.size()), MEM_FN2(read_acc_data_sock, _1, _2));
+
+	try
+	{
+		pqxx::connection conn("dbname = SN_DB user = postgres password = root hostaddr = 127.0.0.1 port = 5432");
+		if (conn.is_open())
+		{
+			std::cout << "Opened database successfully: " << conn.dbname() << std::endl;
+		}
+		else
+			throw std::runtime_error("Can't open database");
+
+		pqxx::work query(conn);
+		query.exec("UPDATE public.useraccdata SET acc_data_vector=" + ser_vec.str() + " WHERE user_id=" + std::to_string(this_client->get_UserId()) + ";");
+
+		query.commit();
+	}
+	catch (const std::runtime_error& e)
+	{
+		std::cerr << e.what() << std::endl;
+		throw; //write better exception later
+	}
+
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+		throw; //write better exception later
+	}
 }
 
 void ClientLogic::add_photo()
 {
+
 }
 
 void ClientLogic::delete_photo()

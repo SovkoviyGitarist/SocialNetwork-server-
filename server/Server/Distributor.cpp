@@ -51,7 +51,7 @@ void Distributor::execute_command()
 			else
 			{
 				std::string msg("ERROR: invalid nickname or password");
-				async_write(*(this_distributor->sock_ptr), buffer(msg.c_str(), msg.size()), [](const error_code& err, size_t bytes) {err ? 1 : 0;});//check callback
+				async_write(*(this_distributor->sock_ptr), buffer(msg.c_str(), msg.size()), [](const error_code& err, size_t bytes) {err ? 1 : 0;});
 				this_distributor.reset();
 				return;
 			}
@@ -66,7 +66,7 @@ void Distributor::execute_command()
 			{
 				client_ptr->set_txt_msg_sock(*(this_distributor->sock_ptr));
 
-				Client::txt_service.post([&client_ptr]() {client_ptr->this_logic->send_chat_list(); });// write function to send chat list to client in special thread
+				Client::txt_service.post([&client_ptr]() {client_ptr->this_logic->send_chat_list(); });// start sending chat list to client in special thread
 
 				this_distributor.reset();
 				return;
@@ -84,7 +84,7 @@ void Distributor::execute_command()
 				client_ptr->set_file_msg_sock(*(this_distributor->sock_ptr));
 
 				
-				Client::file_service.post([&client_ptr]() {client_ptr->this_logic->send_file_list(); });// write function to send files list to client in special thread
+				Client::file_service.post([&client_ptr]() {client_ptr->this_logic->send_file_list(); });// start sending files list to client in special thread
 
 				this_distributor.reset();
 				return;
@@ -123,7 +123,7 @@ void Distributor::split_command()
 
 
 
-Client::ptr Distributor::make_new_user(std::string &nickname, std::string &password) //check this, because of new type of function
+Client::ptr Distributor::make_new_user(std::string &nickname, std::string &password)
 {
 	try
 	{

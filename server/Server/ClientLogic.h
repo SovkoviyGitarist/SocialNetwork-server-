@@ -21,13 +21,13 @@ private:
 
 
 
-	void read_acc_data_sock(const error_code& err, size_t bytes);
+	void read_acc_data_sock(const error_code& err, size_t bytes); //
 
-	size_t read_complete(const error_code& err, size_t bytes);
+	size_t read_complete(const error_code& err, size_t bytes); //
 
-	void acc_data_distributor(const error_code& err, size_t bytes);
+	void acc_data_distributor(const error_code& err, size_t bytes); //
 
-	void change_avatar();
+	void change_avatar(); //
 
 	void add_photo();
 
@@ -43,9 +43,9 @@ public:
 	ClientLogic(Client::ptr client_ptr);
 	~ClientLogic();
 
-	void set_default_settings();
+	void set_default_settings(); //
 
-	void send_acc_data();
+	void send_acc_data(); //
 
 	void send_chat_list();
 
