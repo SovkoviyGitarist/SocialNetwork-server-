@@ -43,7 +43,7 @@ void Distributor::execute_command()
 				boost::shared_ptr<ClientLogic> new_logic = boost::make_shared<ClientLogic>(client_ptr);
 				client_ptr->logic_pointer(new_logic);
 				
-				Client::acc_service.post([&client_ptr]() {client_ptr->this_logic->send_acc_data(); }); //start sending of acc data to user in special thread
+				Client::acc_service.post([&client_ptr]() {client_ptr->this_logic->send_existing_acc_data(); }); //start sending of acc data to user in special thread
 
 				this_distributor.reset();
 				return;

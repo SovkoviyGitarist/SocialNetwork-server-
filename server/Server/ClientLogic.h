@@ -20,6 +20,7 @@ private:
 	Client::ptr this_client;
 
 
+	void read_txt_msg_sock(const error_code& err, size_t bytes);
 
 	void read_acc_data_sock(const error_code& err, size_t bytes); //
 
@@ -29,13 +30,13 @@ private:
 
 	void change_avatar(); //
 
-	void add_photo();
+	void add_photo(); //
 
-	void delete_photo();
+	void delete_photo(); //
 
-	void user_list();
+	void user_list(); //
 
-	void user_acc();
+	void user_acc(); //
 
 	void new_chat();
 
@@ -45,7 +46,11 @@ public:
 
 	void set_default_settings(); //
 
-	void send_acc_data(); //
+	void send_existing_acc_data(); //
+
+	void update_db_acc_data(std::string& ser_vec); //
+
+	std::string send_new_acc_data(); //
 
 	void send_chat_list();
 

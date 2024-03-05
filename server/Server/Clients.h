@@ -50,7 +50,7 @@ public:
 	boost::shared_ptr<ClientLogic> this_logic;
 
 	std::vector<std::string> acc_data; //contains client account data
-	std::vector<std::pair<std::string, std::string>> chats_info; //contains pairs with id and nickname of users, which have chat with client
+	std::vector<std::pair<int, std::string>> chats_info; //contains pairs with id and nickname of users, which have chat with client
 	std::pair<std::string, std::string> file; //container for file name and file data
 
 	//each subvector below contains chats/file names relative to each individual user

@@ -18,6 +18,10 @@ ClientLogic::~ClientLogic()
 }
 
 
+void ClientLogic::read_txt_msg_sock(const error_code& err, size_t bytes)
+{
+}
+
 void ClientLogic::read_acc_data_sock(const error_code& err, size_t bytes)
 {
 	this_client->this_logic->acc_data_buffer.clear();
@@ -64,11 +68,67 @@ void ClientLogic::change_avatar()
 	boost::sregex_token_iterator iter(this_client->this_logic->acc_data_buffer.begin(), this_client->this_logic->acc_data_buffer.end(), reg, -1);
 	this_client->acc_data[0] = "Avatar|"+ *(++iter);
 
+	std::string ser_vec = std::move(this_client->this_logic->send_new_acc_data());
+
+	this_client->this_logic->update_db_acc_data(ser_vec);
+}
+
+void ClientLogic::add_photo()
+{
+	boost::regex reg("\\|");
+	boost::sregex_token_iterator iter(this_client->this_logic->acc_data_buffer.begin(), this_client->this_logic->acc_data_buffer.end(), reg, -1);
+	std::string ser_photo, date;
+	ser_photo = *(++iter);
+	date = *(++iter);
+
+	if (this_client->acc_data[2] == "Photos|NULL")
+		this_client->acc_data[2] = "Photos|" + date + "~" + ser_photo + "|";
+
+	else
+		this_client->acc_data[2] += date + "~" + ser_photo + "|";
+
+	std::string ser_vec = std::move(this_client->this_logic->send_new_acc_data());
+
+	this_client->this_logic->update_db_acc_data(ser_vec);
+}
+
+void ClientLogic::delete_photo()
+{
+	boost::regex reg("\\|");
+	boost::sregex_token_iterator iter(this_client->this_logic->acc_data_buffer.begin(), this_client->this_logic->acc_data_buffer.end(), reg, -1);
+	std::string date = *(++iter);
+
+	boost::regex del("\\|" + date + "~\S*\\|"); //chek this expr
+	this_client->acc_data[2] = std::move(boost::regex_replace(this_client->acc_data[2], del, "|"));
+
+	std::string ser_vec = std::move(this_client->this_logic->send_new_acc_data());
+
+	this_client->this_logic->update_db_acc_data(ser_vec);
+}
+
+void ClientLogic::user_list()
+{
+	std::vector<std::pair<std::string, std::string>> user_list;
+
+	for (const auto& client : Client::clients_ptr_vector)
+	{
+		std::pair<std::string, std::string> id_nick(std::to_string(client->get_UserId()), client->get_nickname());
+		user_list.push_back(std::move(id_nick));
+	}
+
 	std::stringstream ser_vec;
 	binary_oarchive oa(ser_vec);
-	oa << this_client->acc_data;
-	std::string msg("acc_data|" + ser_vec.str());
+	oa << user_list;
+	std::string msg("user_list|" + ser_vec.str());
 	async_write(*(this_client->acc_data_sock), buffer(msg.c_str(), msg.size()), MEM_FN2(read_acc_data_sock, _1, _2));
+}
+
+void ClientLogic::user_acc()
+{
+	boost::regex reg("\\|");
+	boost::sregex_token_iterator iter(this_client->this_logic->acc_data_buffer.begin(), this_client->this_logic->acc_data_buffer.end(), reg, -1);
+
+	std::vector<std::string> user_acc_data;
 
 	try
 	{
@@ -81,9 +141,12 @@ void ClientLogic::change_avatar()
 			throw std::runtime_error("Can't open database");
 
 		pqxx::work query(conn);
-		query.exec("UPDATE public.useraccdata SET acc_data_vector=" + ser_vec.str() + " WHERE user_id=" + std::to_string(this_client->get_UserId()) + ";");
+		pqxx::result result = query.exec("SELECT acc_data_vector FROM public.useraccdata WHERE user_id=" + *(++iter) + ";");
+
+		user_acc_data.push_back(result.front()["acc_data_vector"].as<std::string>());
 
 		query.commit();
+
 	}
 	catch (const std::runtime_error& e)
 	{
@@ -96,31 +159,126 @@ void ClientLogic::change_avatar()
 		std::cerr << e.what() << std::endl;
 		throw; //write better exception later
 	}
-}
 
-void ClientLogic::add_photo()
-{
-
-}
-
-void ClientLogic::delete_photo()
-{
-}
-
-void ClientLogic::user_list()
-{
-}
-
-void ClientLogic::user_acc()
-{
+	std::stringstream ser_vec;
+	binary_oarchive oa(ser_vec);
+	oa << user_acc_data;
+	std::string msg("user_acc|" + *iter + "|" + ser_vec.str());
+	async_write(*(this_client->acc_data_sock), buffer(msg.c_str(), msg.size()), MEM_FN2(read_acc_data_sock, _1, _2));
 }
 
 void ClientLogic::new_chat()
 {
+	boost::regex reg("\\|");
+	boost::sregex_token_iterator iter(this_client->this_logic->acc_data_buffer.begin(), this_client->this_logic->acc_data_buffer.end(), reg, -1);
+	int user_id = std::stoi(*(++iter));
+	bool chat{ false };
+	bool user_online{ false };
+	std::string msg;
+	for (const auto& info : this_client->chats_info)
+	{
+		if (info.first == user_id)
+		{
+			chat = true;
+			break;
+		}
+	}
+
+	txt_service.post([&]() //write exception if user offline
+	{
+		if (chat)
+		{
+			msg = "new_chat|chat_exist";
+			async_write(*(this_client->txt_msg_sock), buffer(msg.c_str(), msg.size()), MEM_FN2(read_txt_msg_sock, _1, _2));
+		}
+		else
+		{
+			msg = "new_chat|made_new_chat";
+			std::pair<int, std::string> id_nick;
+			std::pair<int, std::string> this_id_nick(this_client->get_UserId(), this_client->get_nickname());
+
+			std::stringstream ser_chat_info;
+			binary_oarchive oas(ser_chat_info);
+
+			for (const auto& client : Client::clients_ptr_vector)
+			{
+				if (client->get_UserId() == user_id)
+				{
+					id_nick.first = client->get_UserId();
+					id_nick.second = client->get_nickname();
+					this_client->chats_info.push_back(id_nick);
+
+					if (client->acc_data_sock->is_open())
+					{
+						client->chats_info.push_back(this_id_nick);
+						oas << client->chats_info;
+						user_online = true;
+					}
+					else
+					{
+						//get chat info of client here and initialise new vector with it
+					}
+					break;
+				}
+			}
+
+			std::vector<std::string> new_chat;
+			new_chat.push_back(std::to_string(this_client->get_UserId()) + "|" + std::to_string(user_id));
+			this_client->chats.push_back(new_chat);
+
+			std::stringstream this_chat;
+			binary_oarchive oac(this_chat);
+			oac << new_chat;
+
+			std::stringstream this_ser_chat_info;
+			binary_oarchive oat(this_ser_chat_info);
+			oat << this_client->chats_info;
+
+
+
+			try
+			{
+				pqxx::connection conn("dbname = SN_DB user = postgres password = root hostaddr = 127.0.0.1 port = 5432");
+				if (conn.is_open())
+				{
+					std::cout << "Opened database successfully: " << conn.dbname() << std::endl;
+				}
+				else
+					throw std::runtime_error("Can't open database");
+
+				pqxx::work query(conn);
+
+				query.exec("UPDATE public.chats_info SET chat_names_vector=" + this_ser_chat_info.str() + " WHERE user_id=" + std::to_string(this_id_nick.first) + ";");
+
+				query.exec("INSERT INTO public.chats(user_1_id, user_2_id, chat_vector) VALUES ("+ std::to_string(this_id_nick.first) +", "+ std::to_string(id_nick.first) + ", "+ this_chat.str() + ");");
+
+				if (user_online)
+					query.exec("UPDATE public.chats_info SET chat_names_vector=" + ser_chat_info.str() + " WHERE user_id=" + std::to_string(id_nick.first) + ";");
+
+
+				query.commit();
+
+			}
+			catch (const std::runtime_error& e)
+			{
+				std::cerr << e.what() << std::endl;
+				throw; //write better exception later
+			}
+
+			catch (const std::exception& e)
+			{
+				std::cerr << e.what() << std::endl;
+				throw; //write better exception later
+			}
+			
+			//send chat info to current user first, then send chat to him, then do it to second user, if he online and do nothing if he offline. Dont forget about socket reading func!!!
+
+		}
+	});
 }
 
 
-void ClientLogic::send_acc_data()
+void ClientLogic::send_existing_acc_data()
 {
 	try
 	{
@@ -156,11 +314,48 @@ void ClientLogic::send_acc_data()
 		throw; //write better exception later
 	}
 
+	this_client->this_logic->send_new_acc_data();
+}
+
+void ClientLogic::update_db_acc_data(std::string &ser_vec)
+{
+	try
+	{
+		pqxx::connection conn("dbname = SN_DB user = postgres password = root hostaddr = 127.0.0.1 port = 5432");
+		if (conn.is_open())
+		{
+			std::cout << "Opened database successfully: " << conn.dbname() << std::endl;
+		}
+		else
+			throw std::runtime_error("Can't open database");
+
+		pqxx::work query(conn);
+		query.exec("UPDATE public.useraccdata SET acc_data_vector=" + ser_vec + " WHERE user_id=" + std::to_string(this_client->get_UserId()) + ";");
+
+		query.commit();
+	}
+	catch (const std::runtime_error& e)
+	{
+		std::cerr << e.what() << std::endl;
+		throw; //write better exception later
+	}
+
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+		throw; //write better exception later
+	}
+}
+
+std::string ClientLogic::send_new_acc_data()
+{
 	std::stringstream ser_vec;
 	binary_oarchive oa(ser_vec);
 	oa << this_client->acc_data;
 	std::string msg("acc_data|" + ser_vec.str());
 	async_write(*(this_client->acc_data_sock), buffer(msg.c_str(), msg.size()), MEM_FN2(read_acc_data_sock, _1, _2));
+
+	return ser_vec.str();
 }
 
 void ClientLogic::send_chat_list()
@@ -172,7 +367,7 @@ void ClientLogic::send_file_list()
 }
 
 
-void ClientLogic::set_default_settings()
+void ClientLogic::set_default_settings() //write default settings in chats_info
 {
 	this_client->acc_data = { "Avatar|NULL", "Nickname|"+this_client->get_nickname(), "Photos|NULL", "Id|" + std::to_string(this_client->get_UserId())};
 	std::stringstream ser_vec;
@@ -207,7 +402,7 @@ void ClientLogic::set_default_settings()
 		throw; //write better exception later
 	}
 
-	this_client->this_logic->send_acc_data();
+	this_client->this_logic->send_existing_acc_data();
 }
 
 
