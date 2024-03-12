@@ -172,71 +172,124 @@ void ClientLogic::new_chat()
 	boost::regex reg("\\|");
 	boost::sregex_token_iterator iter(this_client->this_logic->acc_data_buffer.begin(), this_client->this_logic->acc_data_buffer.end(), reg, -1);
 	int user_id = std::stoi(*(++iter));
-	bool chat{ false };
-	bool user_online{ false };
-	std::string msg;
-	for (const auto& info : this_client->chats_info)
-	{
-		if (info.first == user_id)
-		{
-			chat = true;
-			break;
-		}
-	}
+	
+	
+		bool chat{ false };
+		std::string msg;
 
-	txt_service.post([&]() //write exception if user offline
-	{
+		for (const auto& info : this_client->chats_info)
+		{
+			if (info.first == user_id)
+			{
+				chat = true;
+				break;
+			}
+		}
+
 		if (chat)
 		{
 			msg = "new_chat|chat_exist";
-			async_write(*(this_client->txt_msg_sock), buffer(msg.c_str(), msg.size()), MEM_FN2(read_txt_msg_sock, _1, _2));
+			async_write(*(this_client->acc_data_sock), buffer(msg.c_str(), msg.size()), MEM_FN2(read_acc_data_sock, _1, _2));
 		}
 		else
 		{
 			msg = "new_chat|made_new_chat";
-			std::pair<int, std::string> id_nick;
-			std::pair<int, std::string> this_id_nick(this_client->get_UserId(), this_client->get_nickname());
 
-			std::stringstream ser_chat_info;
-			binary_oarchive oas(ser_chat_info);
-
-			for (const auto& client : Client::clients_ptr_vector)
+			txt_service.post([&]()
 			{
-				if (client->get_UserId() == user_id)
+				bool user_online{ false };
+				std::pair<int, std::string> id_nick;
+				std::pair<int, std::string> this_id_nick(this_client->get_UserId(), this_client->get_nickname());
+				Client::ptr user;
+
+				std::stringstream ser_chat_info;
+				binary_oarchive oas(ser_chat_info);
+
+				//find ptr of user, with whom will be new chat
+				for (const auto& client : Client::clients_ptr_vector)
 				{
-					id_nick.first = client->get_UserId();
-					id_nick.second = client->get_nickname();
-					this_client->chats_info.push_back(id_nick);
-
-					if (client->acc_data_sock->is_open())
+					if (client->get_UserId() == user_id)
 					{
-						client->chats_info.push_back(this_id_nick);
-						oas << client->chats_info;
-						user_online = true;
+						user = client;
+
+						//geting user`s id and nick, updating current client`s chats_info
+						id_nick.first = client->get_UserId();
+						id_nick.second = client->get_nickname();
+						this_client->chats_info.push_back(id_nick);
+
+						if (client->acc_data_sock->is_open()) //if user online - update his chats_info and serialize it
+						{
+							client->chats_info.push_back(this_id_nick);
+							oas << client->chats_info;
+							user_online = true;
+						}
+						else //if user offline - get his chats_info from DB, update it and update DB
+						{
+							try
+							{
+								pqxx::connection conn("dbname = SN_DB user = postgres password = root hostaddr = 127.0.0.1 port = 5432");
+								if (conn.is_open())
+							{
+								std::cout << "Opened database successfully: " << conn.dbname() << std::endl;
+							}
+								else
+									throw std::runtime_error("Can't open database");
+
+								pqxx::work query(conn);
+								pqxx::result result = query.exec("SELECT chat_names_vector FROM public.chats_info WHERE user_id="+ std::to_string(id_nick.first) +";");
+
+								//deserialization of offline user`s chats_info
+								std::stringstream des_vec(result.front()["chat_names_vector"].as<std::string>());
+								binary_iarchive ia(des_vec);
+								client->chats_info.clear();
+								ia >> client->chats_info;
+
+								//updating of chats_info
+								client->chats_info.push_back(this_id_nick);
+
+								//serialization of chats_info
+								oas << client->chats_info;
+
+								//updating DB
+								query.exec("UPDATE public.chats_info SET chat_names_vector=" + ser_chat_info.str() + " WHERE user_id=" + std::to_string(id_nick.first) + ";");
+
+								query.commit();
+
+							}
+							catch (const std::runtime_error& e)
+						{
+							std::cerr << e.what() << std::endl;
+							throw; //write better exception later
+						}
+
+							catch (const std::exception& e)
+						{
+							std::cerr << e.what() << std::endl;
+							throw; //write better exception later
+						}
+						}
+						break;
 					}
-					else
-					{
-						//get chat info of client here and initialise new vector with it
-					}
-					break;
-				}
-			}
+			    }
 
-			std::vector<std::string> new_chat;
-			new_chat.push_back(std::to_string(this_client->get_UserId()) + "|" + std::to_string(user_id));
-			this_client->chats.push_back(new_chat);
+				//create new chat and push it in chats vector of current client
+				std::vector<std::string> new_chat;
+				new_chat.push_back(std::to_string(this_client->get_UserId()) + "|" + std::to_string(user_id));
+				this_client->chats.push_back(new_chat);
 
-			std::stringstream this_chat;
-			binary_oarchive oac(this_chat);
-			oac << new_chat;
+				//serialize new chat
+				std::stringstream this_chat;
+				binary_oarchive oac(this_chat);
+				oac << new_chat;
 
-			std::stringstream this_ser_chat_info;
-			binary_oarchive oat(this_ser_chat_info);
-			oat << this_client->chats_info;
+				//serialize updated chats_info of current client
+				std::stringstream this_ser_chat_info;
+				binary_oarchive oat(this_ser_chat_info);
+				oat << this_client->chats_info;
 
 
 
-			try
+				try
 			{
 				pqxx::connection conn("dbname = SN_DB user = postgres password = root hostaddr = 127.0.0.1 port = 5432");
 				if (conn.is_open())
@@ -248,10 +301,13 @@ void ClientLogic::new_chat()
 
 				pqxx::work query(conn);
 
+				//update chat_info of current client
 				query.exec("UPDATE public.chats_info SET chat_names_vector=" + this_ser_chat_info.str() + " WHERE user_id=" + std::to_string(this_id_nick.first) + ";");
 
+				//save new chat between two clients in DB
 				query.exec("INSERT INTO public.chats(user_1_id, user_2_id, chat_vector) VALUES ("+ std::to_string(this_id_nick.first) +", "+ std::to_string(id_nick.first) + ", "+ this_chat.str() + ");");
 
+				//if user online - update his chat_info
 				if (user_online)
 					query.exec("UPDATE public.chats_info SET chat_names_vector=" + ser_chat_info.str() + " WHERE user_id=" + std::to_string(id_nick.first) + ";");
 
@@ -259,22 +315,40 @@ void ClientLogic::new_chat()
 				query.commit();
 
 			}
-			catch (const std::runtime_error& e)
+				catch (const std::runtime_error& e)
 			{
 				std::cerr << e.what() << std::endl;
 				throw; //write better exception later
 			}
 
-			catch (const std::exception& e)
+				catch (const std::exception& e)
 			{
 				std::cerr << e.what() << std::endl;
 				throw; //write better exception later
 			}
 			
-			//send chat info to current user first, then send chat to him, then do it to second user, if he online and do nothing if he offline. Dont forget about socket reading func!!!
+				//send chats_info and new chat to current client
+				std::string client_chat_info_msg("chat_info|" + this_ser_chat_info.str());
+				async_write(*(this_client->txt_msg_sock), buffer(client_chat_info_msg.c_str(), client_chat_info_msg.size()), [&](const boost::system::error_code& err, std::size_t bytes)
+				{
+					std::string client_chat_msg("new_chat|" + this_chat.str()); //check this msg
+					async_write(*(this_client->txt_msg_sock), buffer(client_chat_msg.c_str(), client_chat_msg.size()), MEM_FN2(read_txt_msg_sock, _1, _2));
+				});
+				 
+				//send chats_info and new chat to user, if he online
+				if (user_online)
+				{
+					std::string user_chat_info_msg("chat_info|" + ser_chat_info.str());
+					async_write(*(user->txt_msg_sock), buffer(user_chat_info_msg.c_str(), user_chat_info_msg.size()), [&](const boost::system::error_code& err, std::size_t bytes)
+					{
+						std::string user_chat_msg("new_chat|" + this_chat.str()); //check this msg
+						async_write(*(user->txt_msg_sock), buffer(user_chat_msg.c_str(), user_chat_msg.size()), boost::bind(&ClientLogic::read_txt_msg_sock, user->this_logic, _1, _2));
+					});
+				}
+			});
 
+			async_write(*(this_client->acc_data_sock), buffer(msg.c_str(), msg.size()), MEM_FN2(read_acc_data_sock, _1, _2));
 		}
-	});
 }
 
 
