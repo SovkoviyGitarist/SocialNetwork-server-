@@ -47,11 +47,11 @@ public:
 
 	void set_default_settings(); //
 
-	void send_existing_acc_data(); //
+	void extract_existing_acc_data(); //
 
 	void update_db_acc_data(std::string& ser_vec); //
 
-	std::string send_new_acc_data(); //
+	std::string send_acc_data(); //
 
 	void send_chat_list();
 

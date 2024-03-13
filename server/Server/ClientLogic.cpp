@@ -41,6 +41,8 @@ size_t ClientLogic::read_complete(const error_code& err, size_t bytes)
 
 void ClientLogic::acc_data_distributor(const error_code& err, size_t bytes)
 {
+	std::string buffer = std::move(this_client->this_logic->acc_data_buffer);
+
 	boost::regex change_avatar("change_avatar");
 	boost::regex add_photo("add_photo");
 	boost::regex delete_photo("delete_photo");
@@ -48,17 +50,17 @@ void ClientLogic::acc_data_distributor(const error_code& err, size_t bytes)
 	boost::regex user_acc("user_acc");
 	boost::regex new_chat("new_chat");
 	
-	if (boost::regex_search(this_client->this_logic->acc_data_buffer, change_avatar))
+	if (boost::regex_search(buffer, change_avatar))
 		this_client->this_logic->change_avatar();
-	else if (boost::regex_search(this_client->this_logic->acc_data_buffer, add_photo))
+	else if (boost::regex_search(buffer, add_photo))
 		this_client->this_logic->add_photo();
-	else if (boost::regex_search(this_client->this_logic->acc_data_buffer, delete_photo))
+	else if (boost::regex_search(buffer, delete_photo))
 		this_client->this_logic->delete_photo();
-	else if (boost::regex_search(this_client->this_logic->acc_data_buffer, user_list))
+	else if (boost::regex_search(buffer, user_list))
 		this_client->this_logic->user_list();
-	else if (boost::regex_search(this_client->this_logic->acc_data_buffer, user_acc))
+	else if (boost::regex_search(buffer, user_acc))
 		this_client->this_logic->user_acc();
-	else if (boost::regex_search(this_client->this_logic->acc_data_buffer, new_chat))
+	else if (boost::regex_search(buffer, new_chat))
 		this_client->this_logic->new_chat();
 }
 
@@ -68,7 +70,7 @@ void ClientLogic::change_avatar()
 	boost::sregex_token_iterator iter(this_client->this_logic->acc_data_buffer.begin(), this_client->this_logic->acc_data_buffer.end(), reg, -1);
 	this_client->acc_data[0] = "Avatar|"+ *(++iter);
 
-	std::string ser_vec = std::move(this_client->this_logic->send_new_acc_data());
+	std::string ser_vec = std::move(this_client->this_logic->send_acc_data());
 
 	this_client->this_logic->update_db_acc_data(ser_vec);
 }
@@ -87,7 +89,7 @@ void ClientLogic::add_photo()
 	else
 		this_client->acc_data[2] += date + "~" + ser_photo + "|";
 
-	std::string ser_vec = std::move(this_client->this_logic->send_new_acc_data());
+	std::string ser_vec = std::move(this_client->this_logic->send_acc_data());
 
 	this_client->this_logic->update_db_acc_data(ser_vec);
 }
@@ -101,7 +103,7 @@ void ClientLogic::delete_photo()
 	boost::regex del("\\|" + date + "~\S*\\|"); //chek this expr
 	this_client->acc_data[2] = std::move(boost::regex_replace(this_client->acc_data[2], del, "|"));
 
-	std::string ser_vec = std::move(this_client->this_logic->send_new_acc_data());
+	std::string ser_vec = std::move(this_client->this_logic->send_acc_data());
 
 	this_client->this_logic->update_db_acc_data(ser_vec);
 }
@@ -195,7 +197,7 @@ void ClientLogic::new_chat()
 		{
 			msg = "new_chat|made_new_chat";
 
-			txt_service.post([&]()
+			Client::txt_service.post([&]()
 			{
 				bool user_online{ false };
 				std::pair<int, std::string> id_nick;
@@ -352,7 +354,7 @@ void ClientLogic::new_chat()
 }
 
 
-void ClientLogic::send_existing_acc_data()
+void ClientLogic::extract_existing_acc_data()
 {
 	try
 	{
@@ -388,7 +390,7 @@ void ClientLogic::send_existing_acc_data()
 		throw; //write better exception later
 	}
 
-	this_client->this_logic->send_new_acc_data();
+	this_client->this_logic->send_acc_data();
 }
 
 void ClientLogic::update_db_acc_data(std::string &ser_vec)
@@ -421,7 +423,7 @@ void ClientLogic::update_db_acc_data(std::string &ser_vec)
 	}
 }
 
-std::string ClientLogic::send_new_acc_data()
+std::string ClientLogic::send_acc_data()
 {
 	std::stringstream ser_vec;
 	binary_oarchive oa(ser_vec);
@@ -441,12 +443,18 @@ void ClientLogic::send_file_list()
 }
 
 
-void ClientLogic::set_default_settings() //write default settings in chats_info
+void ClientLogic::set_default_settings() 
 {
+	//set default settings of acc_data
 	this_client->acc_data = { "Avatar|NULL", "Nickname|"+this_client->get_nickname(), "Photos|NULL", "Id|" + std::to_string(this_client->get_UserId())};
-	std::stringstream ser_vec;
-	binary_oarchive oa(ser_vec);
-	oa << this_client->acc_data;
+	std::stringstream ser_acc_data;
+	binary_oarchive oaa(ser_acc_data);
+	oaa << this_client->acc_data;
+
+	//serialize chats_info
+	std::stringstream ser_chats_info;
+	binary_oarchive oac(ser_chats_info);
+	oac << this_client->chats_info;
 
 	try
 	{
@@ -459,7 +467,10 @@ void ClientLogic::set_default_settings() //write default settings in chats_info
 			throw std::runtime_error("Can't open database");
 
 		pqxx::work query(conn);
-		query.exec("INSERT INTO public.useraccdata (user_id, acc_data_vector) VALUES("+ std::to_string(this_client->get_UserId()) +", " + ser_vec.str() + "); ");
+		//insert default acc_data in DB
+		query.exec("INSERT INTO public.useraccdata (user_id, acc_data_vector) VALUES("+ std::to_string(this_client->get_UserId()) +", " + ser_acc_data.str() + "); ");
+		//insert empty default chats_list in DB
+		query.exec("INSERT INTO public.chats_info(user_id, chat_names_vector) VALUES (" + std::to_string(this_client->get_UserId()) + ", " + ser_chats_info.str() + ");");
 
 		query.commit();
 
@@ -476,7 +487,7 @@ void ClientLogic::set_default_settings() //write default settings in chats_info
 		throw; //write better exception later
 	}
 
-	this_client->this_logic->send_existing_acc_data();
+	this_client->this_logic->extract_existing_acc_data();
 }
 
 
