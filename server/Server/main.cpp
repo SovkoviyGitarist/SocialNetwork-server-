@@ -39,7 +39,7 @@ int main()
 				throw std::runtime_error("Can't open database");
 
 			pqxx::work query(conn);
-			pqxx::result result = query.exec("SELECT * FROM public.users ORDER BY id ASC ");
+			pqxx::result result = std::move(query.exec("SELECT * FROM public.users ORDER BY id ASC "));
 
 			for (const auto& res : result)
 			{
@@ -64,6 +64,7 @@ int main()
 	
 	SockFilter::ptr filter = SockFilter::new_filter();
 	acceptor.async_accept(filter->socket(), boost::bind(handle_accept, filter, _1));
+
 	Client::acc_thread.join();
 	Client::file_thread.join();
 	Client::txt_thread.join();

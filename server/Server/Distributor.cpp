@@ -66,7 +66,7 @@ void Distributor::execute_command()
 			{
 				client_ptr->set_txt_msg_sock(*(this_distributor->sock_ptr));
 
-				Client::txt_service.post([&client_ptr]() {client_ptr->this_logic->send_chat_list(); });// start sending chat list to client in special thread
+				Client::txt_service.post([&client_ptr]() {client_ptr->this_logic->send_chat_info(); });// start sending chat list to client in special thread
 
 				this_distributor.reset();
 				return;
@@ -84,7 +84,7 @@ void Distributor::execute_command()
 				client_ptr->set_file_msg_sock(*(this_distributor->sock_ptr));
 
 				
-				Client::file_service.post([&client_ptr]() {client_ptr->this_logic->send_file_list(); });// start sending files list to client in special thread
+				Client::file_service.post([&client_ptr]() {client_ptr->this_logic->start_read_file_msg_sock(); });// start sending files list to client in special thread
 
 				this_distributor.reset();
 				return;

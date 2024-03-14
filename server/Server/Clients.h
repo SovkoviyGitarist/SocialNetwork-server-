@@ -53,8 +53,7 @@ public:
 	std::vector<std::pair<int, std::string>> chats_info; //contains pairs with id and nickname of users, which have chat with client
 	std::pair<std::string, std::string> file; //container for file name and file data
 
-	//each subvector below contains chats/file names relative to each individual user
-	std::vector<std::vector<std::string>> file_names;
+	//vector contains chats relative to each individual user
 	std::vector<std::vector<std::string>> chats;
 
 	//-------------------------------------------

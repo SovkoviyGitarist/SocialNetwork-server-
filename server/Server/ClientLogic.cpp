@@ -3,7 +3,7 @@
 #define MEM_FN(x) boost::bind(&ClientLogic::x, this_client->this_logic)
 #define MEM_FN1(x,y) boost::bind(&ClientLogic::x, this_client->this_logic, y)
 #define MEM_FN2(x,y,z) boost::bind(&ClientLogic::x, this_client->this_logic, y, z)
-
+#define MEM_FN3(x,y,z,w) boost::bind(&ClientLogic::x, this_client->this_logic, y, z, w)
 
 
 
@@ -17,23 +17,36 @@ ClientLogic::~ClientLogic()
 	std::cout << "distract new logic" << std::endl;
 }
 
+void ClientLogic::start_read_file_msg_sock()
+{
+	this_client->this_logic->file_msg_buffer.clear();
+	async_read(*(this_client->file_msg_sock), buffer(this_client->this_logic->file_msg_buffer), MEM_FN3(read_complete, this_client->this_logic->file_msg_buffer, _1, _2), MEM_FN2(file_msg_distributor, _1, _2));//check buffer
+}
+
+void ClientLogic::read_file_msg_sock(const error_code& err, size_t bytes)
+{
+	this_client->this_logic->file_msg_buffer.clear();
+	async_read(*(this_client->file_msg_sock), buffer(this_client->this_logic->file_msg_buffer), MEM_FN3(read_complete, this_client->this_logic->file_msg_buffer, _1, _2), MEM_FN2(file_msg_distributor, _1, _2));//check buffer
+}
 
 void ClientLogic::read_txt_msg_sock(const error_code& err, size_t bytes)
 {
+	this_client->this_logic->txt_msg_buffer.clear();
+	async_read(*(this_client->txt_msg_sock), buffer(this_client->this_logic->txt_msg_buffer), MEM_FN3(read_complete, this_client->this_logic->txt_msg_buffer, _1, _2), MEM_FN2(txt_msg_distributor, _1, _2));//check buffer
 }
 
 void ClientLogic::read_acc_data_sock(const error_code& err, size_t bytes)
 {
 	this_client->this_logic->acc_data_buffer.clear();
-	async_read(*(this_client->acc_data_sock), buffer(this_client->this_logic->acc_data_buffer), MEM_FN2(read_complete, _1, _2), MEM_FN2(acc_data_distributor, _1, _2));//check buffer
+	async_read(*(this_client->acc_data_sock), buffer(this_client->this_logic->acc_data_buffer), MEM_FN3(read_complete, this_client->this_logic->acc_data_buffer, _1, _2), MEM_FN2(acc_data_distributor, _1, _2));//check buffer
 }
 
-size_t ClientLogic::read_complete(const error_code& err, size_t bytes)
+size_t ClientLogic::read_complete(std::string &msg, const error_code& err, size_t bytes)
 {
 	boost::regex reg("END_OF_MESSAGE");
 	if (err)
 		return 0;
-	else if (boost::regex_search(this_client->this_logic->acc_data_buffer, reg))
+	else if (boost::regex_search(msg, reg))
 		return 0;
 	else
 		return 1;
@@ -51,23 +64,55 @@ void ClientLogic::acc_data_distributor(const error_code& err, size_t bytes)
 	boost::regex new_chat("new_chat");
 	
 	if (boost::regex_search(buffer, change_avatar))
-		this_client->this_logic->change_avatar();
+		this_client->this_logic->change_avatar(buffer);
 	else if (boost::regex_search(buffer, add_photo))
-		this_client->this_logic->add_photo();
+		this_client->this_logic->add_photo(buffer);
 	else if (boost::regex_search(buffer, delete_photo))
-		this_client->this_logic->delete_photo();
+		this_client->this_logic->delete_photo(buffer);
 	else if (boost::regex_search(buffer, user_list))
 		this_client->this_logic->user_list();
 	else if (boost::regex_search(buffer, user_acc))
-		this_client->this_logic->user_acc();
+		this_client->this_logic->user_acc(buffer);
 	else if (boost::regex_search(buffer, new_chat))
-		this_client->this_logic->new_chat();
+		this_client->this_logic->new_chat(buffer);
 }
 
-void ClientLogic::change_avatar()
+void ClientLogic::txt_msg_distributor(const error_code& err, size_t bytes)
+{
+	std::string buffer = std::move(this_client->this_logic->txt_msg_buffer);
+
+	boost::regex txt_message("txt_message");
+	boost::regex chats_info("chats_info");
+	boost::regex get_chat("get_chat");
+
+	if (boost::regex_search(buffer, txt_message))
+		this_client->this_logic->send_txt_msg(buffer);
+	else if (boost::regex_search(buffer, chats_info))
+		this_client->this_logic->send_chat_info();
+	else if (boost::regex_search(buffer, get_chat))
+		this_client->this_logic->send_chat(buffer);
+}
+
+void ClientLogic::file_msg_distributor(const error_code& err, size_t bytes)
+{
+	std::string buffer = std::move(this_client->this_logic->file_msg_buffer);
+
+	boost::regex get_file_list("get_file_list");
+	boost::regex send_file("send_file");
+	boost::regex get_file("get_file");
+
+	if (boost::regex_search(buffer, get_file_list))
+		this_client->this_logic->send_file_list(buffer);
+	else if (boost::regex_search(buffer, send_file))
+		this_client->this_logic->send_file(buffer);
+	else if (boost::regex_search(buffer, get_file))
+		this_client->this_logic->receive_file(buffer);
+}
+
+void ClientLogic::change_avatar(std::string& buff)
 {
 	boost::regex reg("\\|");
-	boost::sregex_token_iterator iter(this_client->this_logic->acc_data_buffer.begin(), this_client->this_logic->acc_data_buffer.end(), reg, -1);
+	boost::sregex_token_iterator iter(buff.begin(), buff.end(), reg, -1);
 	this_client->acc_data[0] = "Avatar|"+ *(++iter);
 
 	std::string ser_vec = std::move(this_client->this_logic->send_acc_data());
@@ -75,10 +120,10 @@ void ClientLogic::change_avatar()
 	this_client->this_logic->update_db_acc_data(ser_vec);
 }
 
-void ClientLogic::add_photo()
+void ClientLogic::add_photo(std::string& buff)
 {
 	boost::regex reg("\\|");
-	boost::sregex_token_iterator iter(this_client->this_logic->acc_data_buffer.begin(), this_client->this_logic->acc_data_buffer.end(), reg, -1);
+	boost::sregex_token_iterator iter(buff.begin(), buff.end(), reg, -1);
 	std::string ser_photo, date;
 	ser_photo = *(++iter);
 	date = *(++iter);
@@ -94,10 +139,10 @@ void ClientLogic::add_photo()
 	this_client->this_logic->update_db_acc_data(ser_vec);
 }
 
-void ClientLogic::delete_photo()
+void ClientLogic::delete_photo(std::string& buff)
 {
 	boost::regex reg("\\|");
-	boost::sregex_token_iterator iter(this_client->this_logic->acc_data_buffer.begin(), this_client->this_logic->acc_data_buffer.end(), reg, -1);
+	boost::sregex_token_iterator iter(buff.begin(), buff.end(), reg, -1);
 	std::string date = *(++iter);
 
 	boost::regex del("\\|" + date + "~\S*\\|"); //chek this expr
@@ -125,10 +170,10 @@ void ClientLogic::user_list()
 	async_write(*(this_client->acc_data_sock), buffer(msg.c_str(), msg.size()), MEM_FN2(read_acc_data_sock, _1, _2));
 }
 
-void ClientLogic::user_acc()
+void ClientLogic::user_acc(std::string& buff)
 {
 	boost::regex reg("\\|");
-	boost::sregex_token_iterator iter(this_client->this_logic->acc_data_buffer.begin(), this_client->this_logic->acc_data_buffer.end(), reg, -1);
+	boost::sregex_token_iterator iter(buff.begin(), buff.end(), reg, -1);
 
 	std::vector<std::string> user_acc_data;
 
@@ -169,10 +214,10 @@ void ClientLogic::user_acc()
 	async_write(*(this_client->acc_data_sock), buffer(msg.c_str(), msg.size()), MEM_FN2(read_acc_data_sock, _1, _2));
 }
 
-void ClientLogic::new_chat()
+void ClientLogic::new_chat(std::string& buff)
 {
 	boost::regex reg("\\|");
-	boost::sregex_token_iterator iter(this_client->this_logic->acc_data_buffer.begin(), this_client->this_logic->acc_data_buffer.end(), reg, -1);
+	boost::sregex_token_iterator iter(buff.begin(), buff.end(), reg, -1);
 	int user_id = std::stoi(*(++iter));
 	
 	
@@ -421,6 +466,8 @@ void ClientLogic::update_db_acc_data(std::string &ser_vec)
 		std::cerr << e.what() << std::endl;
 		throw; //write better exception later
 	}
+
+	this_client->this_logic->send_acc_data();
 }
 
 std::string ClientLogic::send_acc_data()
@@ -434,13 +481,350 @@ std::string ClientLogic::send_acc_data()
 	return ser_vec.str();
 }
 
-void ClientLogic::send_chat_list()
+void ClientLogic::send_chat_info()
 {
+	try
+	{
+		pqxx::connection conn("dbname = SN_DB user = postgres password = root hostaddr = 127.0.0.1 port = 5432");
+		if (conn.is_open())
+		{
+			std::cout << "Opened database successfully: " << conn.dbname() << std::endl;
+		}
+		else
+			throw std::runtime_error("Can't open database");
+
+		pqxx::work query(conn);
+		pqxx::result result = query.exec("SELECT chat_names_vector FROM public.chats_info WHERE user_id="+ std::to_string(this_client->get_UserId()) + ";");
+
+		this_client->chats_info.clear();
+
+		std::stringstream des_chat_info(result.front()["chat_names_vector"].as<std::string>());
+		binary_iarchive ia(des_chat_info);
+		ia >> this_client->chats_info;
+
+		query.commit();
+	}
+	catch (const std::runtime_error& e)
+	{
+		std::cerr << e.what() << std::endl;
+		throw; //write better exception later
+	}
+
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+		throw; //write better exception later
+	}
+
+	std::stringstream ser_vec;
+	binary_oarchive oa(ser_vec);
+	oa << this_client->chats_info;
+	std::string msg("chats_info|" + ser_vec.str());
+	async_write(*(this_client->txt_msg_sock), buffer(msg.c_str(), msg.size()), MEM_FN2(read_txt_msg_sock, _1, _2));
 }
 
-void ClientLogic::send_file_list()
+void ClientLogic::send_txt_msg(std::string& buff)
 {
+	boost::regex reg("\\|");
+	boost::sregex_token_iterator iter(buff.begin(), buff.end(), reg, -1);
+	
+	int user_id = std::stoi(*(++iter));
+	std::string msg = *(++iter);
+
+	boost::shared_ptr<std::vector<std::string>> this_chat;
+
+	std::string f_case(std::to_string(user_id) + "|" + std::to_string(this_client->get_UserId()));
+	std::string s_case(std::to_string(this_client->get_UserId()) + "|" + std::to_string(user_id));
+
+	for (auto &chats : this_client->chats) //find chat we need in client`s chats vector and update it
+	{
+		if (chats[1] == f_case || chats[1] == s_case)
+		{
+			chats.push_back(msg);
+			this_chat = boost::make_shared<std::vector<std::string>>(chats);
+			break;
+		}
+	}
+
+	for (const auto& client : Client::clients_ptr_vector)
+	{
+		if (client->get_UserId() == user_id) //find user we need
+		{
+			if (client->txt_msg_sock->is_open()) //if user online - update his chats vector  and send msg to him
+			{
+				for (auto& chats : client->chats) //find chat we need in user`s chats vector and update it
+				{
+					if (chats[1] == f_case || chats[1] == s_case)
+					{
+						chats.push_back(msg);
+						break;
+					}
+				}
+
+				std::string message("txt_message|" + std::to_string(this_client->get_UserId()) + "|" + msg);
+				async_write(*(client->txt_msg_sock), buffer(message.c_str(), message.size()), MEM_FN2(read_txt_msg_sock, _1, _2));
+
+				break;
+			}
+			else //if user offline - update chat in DB
+			{
+				try
+				{
+					pqxx::connection conn("dbname = SN_DB user = postgres password = root hostaddr = 127.0.0.1 port = 5432");
+					if (conn.is_open())
+					{
+						std::cout << "Opened database successfully: " << conn.dbname() << std::endl;
+					}
+					else
+						throw std::runtime_error("Can't open database");
+
+					pqxx::work query(conn);
+
+					//serialization of chat
+					std::stringstream ser_vec;
+					binary_oarchive oa(ser_vec);
+					oa << *this_chat;
+
+					//updating DB
+					query.exec("UPDATE public.chats SET chat_vector="+ ser_vec.str() + " WHERE (user_1_id =" + std::to_string(user_id) + " AND user_2_id=" + std::to_string(this_client->get_UserId()) + ") OR (user_1_id=" + std::to_string(this_client->get_UserId()) + " AND user_2_id=" + std::to_string(user_id) + ")");
+
+					query.commit();
+
+				}
+
+				catch (const std::runtime_error& e)
+				{
+					std::cerr << e.what() << std::endl;
+					throw; //write better exception later
+				}
+
+				catch (const std::exception& e)
+				{
+					std::cerr << e.what() << std::endl;
+					throw; //write better exception later
+				}
+
+				std::string msg("message_received");
+				async_write(*(this_client->txt_msg_sock), buffer(msg.c_str(), msg.size()), MEM_FN2(read_txt_msg_sock, _1, _2));
+
+				break;
+			}
+		}
+	}
 }
+
+void ClientLogic::send_chat(std::string& buff)
+{
+	boost::regex reg("\\|");
+	boost::sregex_token_iterator iter(buff.begin(), buff.end(), reg, -1);
+
+	int user_id = std::stoi(*(++iter));
+	std::vector<std::string> chat;
+	std::string message;
+	
+	try
+	{
+		pqxx::connection conn("dbname = SN_DB user = postgres password = root hostaddr = 127.0.0.1 port = 5432");
+		if (conn.is_open())
+		{
+			std::cout << "Opened database successfully: " << conn.dbname() << std::endl;
+		}
+		else
+			throw std::runtime_error("Can't open database");
+
+		pqxx::work query(conn);
+
+		pqxx::result result = std::move(query.exec("SELECT chat_vector FROM public.chats WHERE (user_1_id =" + std::to_string(user_id) + " AND user_2_id=" + std::to_string(this_client->get_UserId()) + ") OR (user_1_id=" + std::to_string(this_client->get_UserId()) + " AND user_2_id=" + std::to_string(user_id) + ")"));
+		
+		std::stringstream ser_chat (result.front()["chat_vector"].as<std::string>());
+		binary_iarchive ia(ser_chat);
+		ia >> chat;
+		this_client->chats.push_back(chat);
+
+		message = "chat|" + std::to_string(user_id) + "|" + ser_chat.str();
+
+		query.commit();
+	}
+
+	catch (const std::runtime_error& e)
+	{
+		std::cerr << e.what() << std::endl;
+		throw; //write better exception later
+	}
+
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+		throw; //write better exception later
+	}
+
+	async_write(*(this_client->txt_msg_sock), buffer(message.c_str(), message.size()), MEM_FN2(read_txt_msg_sock, _1, _2));
+}
+
+void ClientLogic::send_file_list(std::string& buff)
+{
+	boost::regex reg("\\|");
+	boost::sregex_token_iterator iter(buff.begin(), buff.end(), reg, -1);
+
+	int user_id = std::stoi(*(++iter));
+	std::string message;
+
+	try
+	{
+		pqxx::connection conn("dbname = SN_DB user = postgres password = root hostaddr = 127.0.0.1 port = 5432");
+		if (conn.is_open())
+		{
+			std::cout << "Opened database successfully: " << conn.dbname() << std::endl;
+		}
+		else
+			throw std::runtime_error("Can't open database");
+
+		pqxx::work query(conn);
+
+		pqxx::result result = std::move(query.exec("SELECT file_names_vector FROM public.file_names WHERE (user_1_id =" + std::to_string(user_id) + " AND user_2_id=" + std::to_string(this_client->get_UserId()) + ") OR (user_1_id=" + std::to_string(this_client->get_UserId()) + " AND user_2_id=" + std::to_string(user_id) + ")"));
+
+		message = "file_list|" + std::to_string(user_id) + "|" + result.front()["file_names_vector"].as<std::string>();
+
+		query.commit();
+	}
+
+	catch (const std::runtime_error& e)
+	{
+		std::cerr << e.what() << std::endl;
+		throw; //write better exception later
+	}
+
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+		throw; //write better exception later
+	}
+
+	async_write(*(this_client->file_msg_sock), buffer(message.c_str(), message.size()), MEM_FN2(read_file_msg_sock, _1, _2));
+}
+
+void ClientLogic::send_file(std::string& buff)
+{
+	boost::regex reg("\\|");
+	boost::sregex_token_iterator iter(buff.begin(), buff.end(), reg, -1);
+
+	int user_id = std::stoi(*(++iter));
+	std::string filename = *(++iter);
+	std::string ser_file = *(++iter);
+	std::string message;
+
+	try
+	{
+		pqxx::connection conn("dbname = SN_DB user = postgres password = root hostaddr = 127.0.0.1 port = 5432");
+		if (conn.is_open())
+		{
+			std::cout << "Opened database successfully: " << conn.dbname() << std::endl;
+		}
+		else
+			throw std::runtime_error("Can't open database");
+
+		pqxx::work query(conn);
+
+		//select old file names
+		pqxx::result result = std::move(query.exec("SELECT file_names_vector FROM public.file_names WHERE (user_1_id =" + std::to_string(user_id) + " AND user_2_id=" + std::to_string(this_client->get_UserId()) + ") OR (user_1_id=" + std::to_string(this_client->get_UserId()) + " AND user_2_id=" + std::to_string(user_id) + ")"));
+
+		std::stringstream ser_file_names (result.front()["file_names_vector"].as<std::string>());
+		binary_iarchive ia(ser_file_names);
+		std::vector<std::string> file_names;
+		ia >> file_names;
+
+		file_names.push_back(filename);
+
+		std::stringstream updated_file_names;
+		binary_oarchive oa(updated_file_names);
+		oa << file_names;
+
+		//update file_names, which belongs to both clients
+		query.exec("UPDATE public.file_names SET file_names_vector=" + updated_file_names.str() + " WHERE (user_1_id =" + std::to_string(user_id) + " AND user_2_id=" + std::to_string(this_client->get_UserId()) + ") OR (user_1_id=" + std::to_string(this_client->get_UserId()) + " AND user_2_id=" + std::to_string(user_id) + ")");
+		//insert new file`s data
+		query.exec("INSERT INTO public.files (user_1_id, user_2_id, file_name, file_data) VALUES (" + std::to_string(this_client->get_UserId()) + ", " + std::to_string(user_id) + ", " + filename + ", " + ser_file + ")");
+
+		message = "file_list|" + std::to_string(this_client->get_UserId()) + "|" + updated_file_names.str();
+
+		query.commit();
+	}
+
+	catch (const std::runtime_error& e)
+	{
+		std::cerr << e.what() << std::endl;
+		throw; //write better exception later
+	}
+
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+		throw; //write better exception later
+	}
+
+	for (const auto& client : Client::clients_ptr_vector)
+	{
+		if (client->get_UserId() == user_id) //find user we need
+		{
+			if (client->file_msg_sock->is_open()) //if user online - send new file list
+			{
+				async_write(*(client->file_msg_sock), buffer(message.c_str(), message.size()), MEM_FN2(read_file_msg_sock, _1, _2));
+
+				break;
+			}
+			else //if user offline - notify client, that file was received
+			{
+				std::string msg("file_received");
+				async_write(*(this_client->file_msg_sock), buffer(msg.c_str(), msg.size()), MEM_FN2(read_file_msg_sock, _1, _2));
+
+				break;
+			}
+		}
+	}
+}
+
+void ClientLogic::receive_file(std::string& buff)
+{
+	boost::regex reg("\\|");
+	boost::sregex_token_iterator iter(buff.begin(), buff.end(), reg, -1);
+
+	int user_id = std::stoi(*(++iter));
+	std::string filename = *(++iter);
+	std::string message;
+
+	try
+	{
+		pqxx::connection conn("dbname = SN_DB user = postgres password = root hostaddr = 127.0.0.1 port = 5432");
+		if (conn.is_open())
+		{
+			std::cout << "Opened database successfully: " << conn.dbname() << std::endl;
+		}
+		else
+			throw std::runtime_error("Can't open database");
+
+		pqxx::work query(conn);
+
+		pqxx::result result = std::move(query.exec("SELECT file_data, date FROM public.files WHERE (user_1_id =" + std::to_string(user_id) + " AND user_2_id=" + std::to_string(this_client->get_UserId()) + " AND file_name='"+ filename +"') OR (user_1_id =" + std::to_string(this_client->get_UserId()) + " AND user_2_id=" + std::to_string(user_id) + " AND file_name='" + filename + "')"));
+
+		message = "file|" + result.front()["file_data"].as<std::string>();
+
+		query.commit();
+	}
+
+	catch (const std::runtime_error& e)
+	{
+		std::cerr << e.what() << std::endl;
+		throw; //write better exception later
+	}
+
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+		throw; //write better exception later
+	}
+	
+	async_write(*(this_client->file_msg_sock), buffer(message.c_str(), message.size()), MEM_FN2(read_file_msg_sock, _1, _2));
+}
+
 
 
 void ClientLogic::set_default_settings() 
