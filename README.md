@@ -9,12 +9,11 @@
 
 ### Technology stack:
 
-- Boost.asio - Boost.serialization - Boost.UUID - multithreading - OOP - TCP/IP - PostgreSQL - regex 
+- **Boost.asio - Boost.serialization - Boost.UUID - multithreading - OOP - TCP/IP - PostgreSQL - regex**
 
 ### Additional features:
 
-- Сommits via **Git** terminal to control development process
-- Server use MD5 hash technology for passwords
+- Server use **MD5** hash technology for passwords
 - Multithreading is used in conjunction with asynchrony
 
 ### P.S.
